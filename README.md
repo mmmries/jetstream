@@ -1,21 +1,9 @@
 # Jetstream
 
-**TODO: Add description**
+A library for interacting with NATS [Jetstream](https://github.com/nats-io/jetstream) from Elixir.
+This library builds on to of [gnat](https://hex.pm/packages/gnat), the officially supported Elixir client for NATS.
 
-## Installation
+## Development
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `jetstream` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:jetstream, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/jetstream](https://hexdocs.pm/jetstream).
-
+The test suite of this project is designed to interact with a live jetstream/NATS server.
+You can start one easily with this command: ` docker run --rm -ti --name jetstream -p 4222:4222 synadia/jsm:latest server -V`
