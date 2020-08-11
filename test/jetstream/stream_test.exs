@@ -2,16 +2,51 @@ defmodule Jetstream.StreamTest do
   use ExUnit.Case
   alias Jetstream.Stream
 
-  test "listing and creating streams" do
+  test "listing and creating, and deleting streams" do
     conn = gnat()
     {:ok, %{streams: streams}} = Stream.list(conn)
-
     assert streams == nil || !("LIST_TEST" in streams)
 
-    {:ok, _} = Stream.create(conn, %{name: "LIST_TEST", subjects: ["LIST_TEST"]})
+    stream = %Stream{name: "LIST_TEST", subjects: ["STREAM TEST"]}
+    {:ok, response} = Stream.create(conn, stream)
+    assert response.config == stream
+    assert response.state == %{
+      bytes: 0,
+      consumer_count: 0,
+      first_seq: 0,
+      first_ts: ~U[0001-01-01 00:00:00Z],
+      last_seq: 0,
+      last_ts: ~U[0001-01-01 00:00:00Z],
+      messages: 0
+    }
     {:ok, %{streams: streams}} = Stream.list(conn)
-
     assert "LIST_TEST" in streams
+
+    assert :ok = Stream.delete(conn, "LIST_TEST")
+    {:ok, %{streams: streams}} = Stream.list(conn)
+    assert streams == nil || !("LIST_TEST" in streams)
+  end
+
+  test "failed deletes" do
+    assert {:error, %{"code" => 404, "description" => "stream not found"}} = Stream.delete(gnat(), "NaN")
+  end
+
+  test "getting stream info" do
+    conn = gnat()
+    stream = %Stream{name: "INFO_TEST", subjects: ["INFO_TEST.*"]}
+    assert {:ok, _response} = Stream.create(conn, stream)
+
+    assert {:ok, response} = Stream.info(conn, "INFO_TEST")
+    assert response.config == stream
+    assert response.state == %{
+      bytes: 0,
+      consumer_count: 0,
+      first_seq: 0,
+      first_ts: ~U[0001-01-01 00:00:00Z],
+      last_seq: 0,
+      last_ts: ~U[0001-01-01 00:00:00Z],
+      messages: 0
+    }
   end
 
   defp gnat do

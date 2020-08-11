@@ -1,35 +1,81 @@
 defmodule Jetstream.Stream do
-  @type streams :: %{
-          limit: non_neg_integer(),
-          offset: non_neg_integer(),
-          streams: list(binary()),
-          total: non_neg_integer()
-        }
 
-  @defaults %{
-    max_age: -1,
-    max_bytes: -1,
-    max_msg_size: -1,
-    max_msgs: -1,
-    max_consumers: -1,
-    retention: "limits",
-    discard: "old",
-    storage: "file",
-    num_replicas: 1
+
+  @enforce_keys [:name, :subjects]
+  @derive Jason.Encoder
+  defstruct name: nil,
+            subjects: [],
+            max_age: -1,
+            max_bytes: -1,
+            max_msg_size: -1,
+            max_msgs: -1,
+            max_consumers: -1,
+            retention: "limits",
+            discard: "old",
+            storage: "file",
+            num_replicas: 1
+
+  @type stream_response :: %{
+    state: stream_state(),
+    config: t()
+  }
+
+  @type stream_state :: %{
+    bytes: non_neg_integer(),
+    consumer_count: non_neg_integer(),
+    first_seq: non_neg_integer(),
+    first_ts: DateTime.t(),
+    last_seq: non_neg_integer(),
+    last_ts: DateTime.t(),
+    messages: non_neg_integer()
+  }
+
+  @type streams :: %{
+    limit: non_neg_integer(),
+    offset: non_neg_integer(),
+    streams: list(binary()),
+    total: non_neg_integer()
+  }
+
+  @type t :: %__MODULE__{
+    name: binary(),
+    subjects: list(binary()),
+    max_age: integer(),
+    max_bytes: integer(),
+    max_msg_size: integer(),
+    max_msgs: integer(),
+    max_consumers: integer(),
+    retention: binary(),
+    discard: binary(),
+    storage: binary(),
+    num_replicas: pos_integer()
   }
 
   @doc "create a new stream, please see https://github.com/nats-io/jetstream#streams for details on supported arguments"
-  def create(conn, settings) do
-    payload = Map.merge(@defaults, settings)
-
-    with :ok <- validate(payload),
+  @spec create(GenServer.t(), t()) :: {:ok, stream_response()} | {:error, any()}
+  def create(conn, %__MODULE__{}=stream) do
+    with :ok <- validate(stream),
          {:ok, stream} <-
-           request(conn, "$JS.API.STREAM.CREATE.#{payload.name}", Jason.encode!(payload)) do
-      {:ok, stream}
+           request(conn, "$JS.API.STREAM.CREATE.#{stream.name}", Jason.encode!(stream)) do
+      {:ok, to_stream_response(stream)}
     end
   end
 
-  @spec list(Gnat.t(), offset: non_neg_integer()) :: {:ok, streams()} | {:error, term()}
+  @spec delete(GenServer.t(), binary()) :: :ok | {:error, any()}
+  def delete(conn, stream_name) when is_binary(stream_name) do
+    with {:ok, _response} <- request(conn, "$JS.API.STREAM.DELETE.#{stream_name}", "") do
+      :ok
+    end
+  end
+
+  @spec info(GenServer.t(), binary()) :: {:ok, stream_response()} | {:error, any()}
+  def info(conn, stream_name) when is_binary(stream_name) do
+    with {:ok, decoded} <- request(conn, "$JS.API.STREAM.INFO.#{stream_name}", "") do
+      {:ok, to_stream_response(decoded)}
+    end
+  end
+
+  @spec list(GenServer.t(), offset: non_neg_integer()) :: {:ok, streams()} | {:error, term()}
   def list(conn, params \\ []) do
     payload =
       Jason.encode!(%{
@@ -59,6 +105,37 @@ defmodule Jetstream.Stream do
           {:ok, other}
       end
     end
+  end
+
+  defp to_datetime(str) do
+    {:ok, datetime, _} = DateTime.from_iso8601(str)
+    datetime
+  end
+
+  defp to_state(state) do
+    %{
+      bytes: Map.fetch!(state, "bytes"),
+      consumer_count: Map.fetch!(state, "consumer_count"),
+      first_seq: Map.fetch!(state, "first_seq"),
+      first_ts: Map.fetch!(state, "first_ts") |> to_datetime(),
+      last_seq: Map.fetch!(state, "last_seq"),
+      last_ts: Map.fetch!(state, "last_ts") |> to_datetime(),
+      messages: Map.fetch!(state, "messages")
+    }
+  end
+
+  defp to_stream(stream) do
+    %__MODULE__{
+      name: Map.fetch!(stream, "name"),
+      subjects: Map.fetch!(stream, "subjects")
+    }
+  end
+
+  defp to_stream_response(%{"config" => config, "state" => state}) do
+    %{
+      config: to_stream(config),
+      state: to_state(state)
+    }
   end
 
   defp validate(stream_settings) do
