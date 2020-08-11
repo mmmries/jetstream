@@ -7,7 +7,12 @@ defmodule Jetstream.MixProject do
       version: "0.0.1-pre0",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      package: package(),
+      docs: [
+        main: "readme",
+        extras: ["README.md"]
+      ]
     ]
   end
 
@@ -22,7 +27,19 @@ defmodule Jetstream.MixProject do
   defp deps do
     [
       {:gnat, "~> 1.1"},
-      {:jason, "~> 1.1"}
+      {:jason, "~> 1.1"},
+      {:ex_doc, "~> 0.22", only: :dev, runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      description: "A Jetstream client in pure elixir.",
+      licenses: ["MIT"],
+      links: %{
+        "Github" => "https://github.com/mmmries/jetstream"
+      },
+      maintainers: ["Michael Ries"]
     ]
   end
 end
