@@ -1,6 +1,6 @@
 # One-time Setup
 {:ok, gnat} = Gnat.start_link()
-stream = %Jetstream.Stream{name: "greetings", subjects: ["greetings.*"]}
+stream = %Jetstream.Stream{name: "TEST", subjects: ["greetings.*"]}
 {:ok, _} = Jetstream.Stream.create(gnat, stream)
 # setup a consumer consumer using the `nats` cli tool
 # nats consumer add greetings a --target consumer.greetings --replay instant --deliver=all --ack all --wait=5s --filter="" --max-deliver=10
@@ -9,7 +9,11 @@ stream = %Jetstream.Stream{name: "greetings", subjects: ["greetings.*"]}
 defmodule Subscriber do
   def handle(%{reply_to: reply_to, gnat: gnat} = msg) do
     IO.inspect(msg)
-    Gnat.pub(gnat, reply_to, "")
+    case msg.body do
+      "hola" -> Gnat.pub(gnat, reply_to, "")
+      "bom dia" -> Gnat.pub(gnat, reply_to, "-NAK")
+      _ -> nil
+    end
   end
 end
 
@@ -24,6 +28,12 @@ end
   connection_name: :gnat,
   consuming_function: {Subscriber, :handle},
   subscription_topics: [
-    %{topic: "consumer.greetings"}
+    %{topic: "consumer.TEST"}
   ]
 })
+
+# now publish some messages into the stream
+
+Gnat.pub(gnat, "greetings.en", "hello")
+Gnat.pub(gnat, "greetings.sp", "hola")
+Gnat.pub(gnat, "greetings.pr", "bom dia")
