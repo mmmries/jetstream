@@ -8,14 +8,15 @@ defmodule Jetstream.Stream do
             max_msg_size: -1,
             max_msgs: -1,
             max_consumers: -1,
-            retention: "limits",
-            discard: "old",
-            storage: "file",
+            retention: :limits,
+            discard: :old,
+            storage: :file,
             num_replicas: 1
 
   @type stream_response :: %{
     state: stream_state(),
-    config: t()
+    config: t(),
+    created: DateTime.t()
   }
 
   @type stream_state :: %{
@@ -43,9 +44,9 @@ defmodule Jetstream.Stream do
     max_msg_size: integer(),
     max_msgs: integer(),
     max_consumers: integer(),
-    retention: binary(),
-    discard: binary(),
-    storage: binary(),
+    retention: :limits | :workqueue | :interest,
+    discard: :old | :new,
+    storage: :file | :memory,
     num_replicas: pos_integer()
   }
 
