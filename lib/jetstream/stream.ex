@@ -1,6 +1,4 @@
 defmodule Jetstream.Stream do
-
-
   @enforce_keys [:name, :subjects]
   @derive Jason.Encoder
   defstruct name: nil,
