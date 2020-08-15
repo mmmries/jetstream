@@ -5,7 +5,7 @@ defmodule Jetstream.Stream do
   @derive Jason.Encoder
   defstruct name: nil,
             subjects: [],
-            max_age: -1,
+            max_age: 0,
             max_bytes: -1,
             max_msg_size: -1,
             max_msgs: -1,
