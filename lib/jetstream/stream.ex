@@ -1,4 +1,6 @@
 defmodule Jetstream.Stream do
+  import Jetstream.Util
+
   @enforce_keys [:name, :subjects]
   @derive Jason.Encoder
   defstruct name: nil,
@@ -91,24 +93,6 @@ defmodule Jetstream.Stream do
 
       {:ok, result}
     end
-  end
-
-  defp request(conn, topic, payload) do
-    with {:ok, %{body: body}} <- Gnat.request(conn, topic, payload),
-         {:ok, decoded} <- Jason.decode(body) do
-      case decoded do
-        %{"error" => err} ->
-          {:error, err}
-
-        other ->
-          {:ok, other}
-      end
-    end
-  end
-
-  defp to_datetime(str) do
-    {:ok, datetime, _} = DateTime.from_iso8601(str)
-    datetime
   end
 
   defp to_state(state) do
