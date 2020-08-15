@@ -53,7 +53,7 @@ defmodule Jetstream.Stream do
   }
 
   @doc "create a new stream, please see https://github.com/nats-io/jetstream#streams for details on supported arguments"
-  @spec create(GenServer.t(), t()) :: {:ok, stream_response()} | {:error, any()}
+  @spec create(Gnat.t(), t()) :: {:ok, stream_response()} | {:error, any()}
   def create(conn, %__MODULE__{}=stream) do
     with :ok <- validate(stream),
          {:ok, stream} <-
@@ -62,21 +62,21 @@ defmodule Jetstream.Stream do
     end
   end
 
-  @spec delete(GenServer.t(), binary()) :: :ok | {:error, any()}
+  @spec delete(Gnat.t(), binary()) :: :ok | {:error, any()}
   def delete(conn, stream_name) when is_binary(stream_name) do
     with {:ok, _response} <- request(conn, "$JS.API.STREAM.DELETE.#{stream_name}", "") do
       :ok
     end
   end
 
-  @spec info(GenServer.t(), binary()) :: {:ok, stream_response()} | {:error, any()}
+  @spec info(Gnat.t(), binary()) :: {:ok, stream_response()} | {:error, any()}
   def info(conn, stream_name) when is_binary(stream_name) do
     with {:ok, decoded} <- request(conn, "$JS.API.STREAM.INFO.#{stream_name}", "") do
       {:ok, to_stream_response(decoded)}
     end
   end
 
-  @spec list(GenServer.t(), offset: non_neg_integer()) :: {:ok, streams()} | {:error, term()}
+  @spec list(Gnat.t(), offset: non_neg_integer()) :: {:ok, streams()} | {:error, term()}
   def list(conn, params \\ []) do
     payload =
       Jason.encode!(%{
