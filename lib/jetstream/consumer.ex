@@ -71,6 +71,14 @@ defmodule Jetstream.Consumer do
     end
   end
 
+  @spec info(Gnat.t(), binary(), binary()) :: {:ok, consumer_response()} | {:error, any()}
+  def info(gnat, stream_name, consumer_name) do
+    topic = "$JS.API.CONSUMER.INFO.#{stream_name}.#{consumer_name}"
+    with {:ok, raw} <- request(gnat, topic, "") do
+      {:ok, to_consumer_response(raw)}
+    end
+  end
+
   @spec list(Gnat.t(), binary(), offset: non_neg_integer()) :: {:ok, consumers()} | {:error, term()}
   def list(gnat, stream_name, params \\ []) do
     payload = Jason.encode!(%{
