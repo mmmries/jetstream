@@ -1,9 +1,17 @@
-# Start a nats server with jetstream enabled
-# now use the nats CLI tool to setup your stream and consumer configuration
+# Start a nats server with jetstream enabled and default configs
+# Now run the following snippets in an IEx terminal
+
+# Setup a connection to the nats server and create the stream/consumer
+# This is the equivalen of these two nats cli commands
 #   nats stream add TEST --subjects="greetings" --max-msgs=-1 --max-msg-size=-1 --max-bytes=-1 --max-age=-1 --storage=file --retention=limits --discard=old
 #   nats consumer add TEST TEST --target consumer.greetings --replay instant --deliver=all --ack all --wait=5s --filter="" --max-deliver=10
+{:ok, connection} = Gnat.start_link()
+stream = %Jetstream.Stream{name: "TEST", subjects: ["greetings"]}
+{:ok, _response} = Jetstream.Stream.create(connection, stream)
+consumer = %Jetstream.Consumer{stream_name: "TEST", name: "TEST", deliver_subject: "consumer.greetings", ack_wait: 5_000_000_000, max_deliver: 10}
+{:ok, _response} = Jetstream.Consumer.create(connection, consumer)
 
-# Setup Consumer/Subscription
+# Setup Consuming Function
 defmodule Subscriber do
   def handle(msg) do
     IO.inspect(msg)
