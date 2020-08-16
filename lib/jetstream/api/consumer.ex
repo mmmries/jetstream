@@ -1,5 +1,5 @@
-defmodule Jetstream.Consumer do
-  import Jetstream.Util
+defmodule Jetstream.API.Consumer do
+  import Jetstream.API.Util
 
   @enforce_keys [:stream_name, :name]
   defstruct stream_name: nil,

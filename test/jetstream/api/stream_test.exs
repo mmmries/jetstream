@@ -1,6 +1,6 @@
-defmodule Jetstream.StreamTest do
+defmodule Jetstream.API.StreamTest do
   use ExUnit.Case
-  alias Jetstream.Stream
+  alias Jetstream.API.Stream
 
   test "listing and creating, and deleting streams" do
     conn = gnat()

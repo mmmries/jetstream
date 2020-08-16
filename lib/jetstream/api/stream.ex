@@ -1,5 +1,5 @@
-defmodule Jetstream.Stream do
-  import Jetstream.Util
+defmodule Jetstream.API.Stream do
+  import Jetstream.API.Util
 
   @enforce_keys [:name, :subjects]
   @derive Jason.Encoder

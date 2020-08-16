@@ -1,6 +1,6 @@
-defmodule Jetstream.ConsumerTest do
+defmodule Jetstream.API.ConsumerTest do
   use ExUnit.Case
-  alias Jetstream.{Consumer,Stream}
+  alias Jetstream.API.{Consumer,Stream}
 
   test "listing, creating, and deleting consumers" do
     conn = gnat()

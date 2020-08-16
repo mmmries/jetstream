@@ -1,4 +1,4 @@
-defmodule Jetstream.Util do
+defmodule Jetstream.API.Util do
   @moduledoc false
 
   def request(conn, topic, payload) do
