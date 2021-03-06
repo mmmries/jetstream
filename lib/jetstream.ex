@@ -11,6 +11,11 @@ defmodule Jetstream do
     Gnat.pub(gnat, reply_to, "")
   end
 
+  @spec ack_next(Gnat.message(), binary()) :: :ok
+  def ack_next(%{gnat: gnat, reply_to: reply_to}, consumer_topic) do
+    Gnat.pub(gnat, reply_to, "+NXT", reply_to: consumer_topic)
+  end
+
   @spec nack(Gnat.message()) :: :ok
   def nack(%{gnat: gnat, reply_to: reply_to}) do
     Gnat.pub(gnat, reply_to, "-NAK")
