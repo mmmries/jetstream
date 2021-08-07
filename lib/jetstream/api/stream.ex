@@ -12,8 +12,11 @@ defmodule Jetstream.API.Stream do
             max_consumers: -1,
             retention: :limits,
             discard: :old,
+            duplicate_window: 120_000_000_000,
             storage: :file,
             num_replicas: 1
+
+  @type nanoseconds :: non_neg_integer()
 
   @type stream_response :: %{
     state: stream_state(),
@@ -41,13 +44,14 @@ defmodule Jetstream.API.Stream do
   @type t :: %__MODULE__{
     name: binary(),
     subjects: list(binary()),
-    max_age: integer(),
+    max_age: nanoseconds(),
     max_bytes: integer(),
     max_msg_size: integer(),
     max_msgs: integer(),
     max_consumers: integer(),
     retention: :limits | :workqueue | :interest,
     discard: :old | :new,
+    duplicate_window: nanoseconds(),
     storage: :file | :memory,
     num_replicas: pos_integer()
   }
@@ -110,7 +114,17 @@ defmodule Jetstream.API.Stream do
   defp to_stream(stream) do
     %__MODULE__{
       name: Map.fetch!(stream, "name"),
-      subjects: Map.fetch!(stream, "subjects")
+      subjects: Map.fetch!(stream, "subjects"),
+      max_age: Map.fetch!(stream, "max_age"),
+      max_bytes: Map.fetch!(stream, "max_bytes"),
+      max_msg_size: Map.fetch!(stream, "max_msg_size"),
+      max_msgs: Map.fetch!(stream, "max_msgs"),
+      max_consumers: Map.fetch!(stream, "max_consumers"),
+      retention: Map.fetch!(stream, "retention") |> String.to_existing_atom(),
+      discard: Map.fetch!(stream, "discard") |> String.to_existing_atom(),
+      duplicate_window: Map.fetch!(stream, "duplicate_window"),
+      storage: Map.fetch!(stream, "storage") |> String.to_existing_atom(),
+      num_replicas: Map.fetch!(stream, "num_replicas")
     }
   end
 

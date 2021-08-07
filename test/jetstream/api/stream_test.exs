@@ -49,6 +49,22 @@ defmodule Jetstream.API.StreamTest do
     }
   end
 
+  test "creating a stream with non-standard settings" do
+    conn = gnat()
+    stream = %Stream{
+      name: "ARGS_TEST",
+      subjects: ["ARGS_TEST.*"],
+      retention: :workqueue,
+      duplicate_window: 1_000_000,
+      storage: :memory
+    }
+    assert {:ok, %{config: result}} = Stream.create(conn, stream)
+    assert result.name == "ARGS_TEST"
+    assert result.duplicate_window == 1_000_000
+    assert result.retention == :workqueue
+    assert result.storage == :memory
+  end
+
   defp gnat do
     {:ok, pid} = Gnat.start_link()
     pid
