@@ -120,10 +120,10 @@ defmodule Jetstream.API.Stream do
       max_msg_size: Map.fetch!(stream, "max_msg_size"),
       max_msgs: Map.fetch!(stream, "max_msgs"),
       max_consumers: Map.fetch!(stream, "max_consumers"),
-      retention: Map.fetch!(stream, "retention") |> String.to_existing_atom(),
-      discard: Map.fetch!(stream, "discard") |> String.to_existing_atom(),
+      retention: Map.fetch!(stream, "retention") |> to_sym(),
+      discard: Map.fetch!(stream, "discard") |> to_sym(),
       duplicate_window: Map.fetch!(stream, "duplicate_window"),
-      storage: Map.fetch!(stream, "storage") |> String.to_existing_atom(),
+      storage: Map.fetch!(stream, "storage") |> to_sym(),
       num_replicas: Map.fetch!(stream, "num_replicas")
     }
   end
