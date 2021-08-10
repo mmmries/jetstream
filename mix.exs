@@ -11,7 +11,7 @@ defmodule Jetstream.MixProject do
       package: package(),
       docs: [
         main: "readme",
-        extras: ["README.md"]
+        extras: ["README.md", "MANAGING.md"]
       ]
     ]
   end
