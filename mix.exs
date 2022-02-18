@@ -19,7 +19,7 @@ defmodule Jetstream.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:crypto, :logger]
     ]
   end
 
@@ -28,13 +28,13 @@ defmodule Jetstream.MixProject do
     [
       {:gnat, "~> 1.1"},
       {:jason, "~> 1.1"},
-      {:ex_doc, "~> 0.22", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.28", only: :dev, runtime: false}
     ]
   end
 
   defp package do
     [
-      description: "A Jetstream client in pure elixir.",
+      description: "A Jetstream client in pure Elixir.",
       licenses: ["MIT"],
       links: %{
         "Github" => "https://github.com/mmmries/jetstream"
