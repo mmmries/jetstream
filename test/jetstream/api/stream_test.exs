@@ -10,15 +10,17 @@ defmodule Jetstream.API.StreamTest do
     stream = %Stream{name: "LIST_TEST", subjects: ["STREAM TEST"]}
     {:ok, response} = Stream.create(conn, stream)
     assert response.config == stream
+
     assert response.state == %{
-      bytes: 0,
-      consumer_count: 0,
-      first_seq: 0,
-      first_ts: ~U[0001-01-01 00:00:00Z],
-      last_seq: 0,
-      last_ts: ~U[0001-01-01 00:00:00Z],
-      messages: 0
-    }
+             bytes: 0,
+             consumer_count: 0,
+             first_seq: 0,
+             first_ts: ~U[0001-01-01 00:00:00Z],
+             last_seq: 0,
+             last_ts: ~U[0001-01-01 00:00:00Z],
+             messages: 0
+           }
+
     {:ok, %{streams: streams}} = Stream.list(conn)
     assert "LIST_TEST" in streams
 
@@ -28,7 +30,8 @@ defmodule Jetstream.API.StreamTest do
   end
 
   test "failed deletes" do
-    assert {:error, %{"code" => 404, "description" => "stream not found"}} = Stream.delete(gnat(), "NaN")
+    assert {:error, %{"code" => 404, "description" => "stream not found"}} =
+             Stream.delete(gnat(), "NaN")
   end
 
   test "getting stream info" do
@@ -38,19 +41,21 @@ defmodule Jetstream.API.StreamTest do
 
     assert {:ok, response} = Stream.info(conn, "INFO_TEST")
     assert response.config == stream
+
     assert response.state == %{
-      bytes: 0,
-      consumer_count: 0,
-      first_seq: 0,
-      first_ts: ~U[0001-01-01 00:00:00Z],
-      last_seq: 0,
-      last_ts: ~U[0001-01-01 00:00:00Z],
-      messages: 0
-    }
+             bytes: 0,
+             consumer_count: 0,
+             first_seq: 0,
+             first_ts: ~U[0001-01-01 00:00:00Z],
+             last_seq: 0,
+             last_ts: ~U[0001-01-01 00:00:00Z],
+             messages: 0
+           }
   end
 
   test "creating a stream with non-standard settings" do
     conn = gnat()
+
     stream = %Stream{
       name: "ARGS_TEST",
       subjects: ["ARGS_TEST.*"],
@@ -58,6 +63,7 @@ defmodule Jetstream.API.StreamTest do
       duplicate_window: 1_000_000,
       storage: :memory
     }
+
     assert {:ok, %{config: result}} = Stream.create(conn, stream)
     assert result.name == "ARGS_TEST"
     assert result.duplicate_window == 1_000_000

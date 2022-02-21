@@ -8,56 +8,58 @@ defmodule Jetstream.API.Consumer do
             deliver_policy: :all,
             durable: true,
             ack_policy: :explicit,
-            ack_wait: 30_000_000_000, # 30sec
+            # 30sec
+            ack_wait: 30_000_000_000,
             max_deliver: -1,
             replay_policy: :instant,
             opt_start_time: nil,
             opt_start_seq: nil
 
   @type consumer_response :: %{
-    stream_name: binary(),
-    name: binary(),
-    created: DateTime.t(),
-    config: consumer_config(),
-    delivered: %{
-      consumer_seq: non_neg_integer(),
-      stream_seq: non_neg_integer()
-    },
-    ack_floor: %{
-      consumer_seq: non_neg_integer(),
-      stream_seq: non_neg_integer()
-    },
-    num_pending: non_neg_integer(),
-    num_redelivered: non_neg_integer()
-  }
+          stream_name: binary(),
+          name: binary(),
+          created: DateTime.t(),
+          config: consumer_config(),
+          delivered: %{
+            consumer_seq: non_neg_integer(),
+            stream_seq: non_neg_integer()
+          },
+          ack_floor: %{
+            consumer_seq: non_neg_integer(),
+            stream_seq: non_neg_integer()
+          },
+          num_pending: non_neg_integer(),
+          num_redelivered: non_neg_integer()
+        }
 
   @type consumer_config :: %{
-    durable_name: binary(),
-    deliver_policy: :all | :last | :new | :by_start_sequence | :by_start_time,
-    deliver_subject: nil | binary(),
-    ack_wait: nil | non_neg_integer(),
-    ack_policy: :none | :all | :explicit,
-    replay_policy: :instant | :original,
-    filter_subject: nil | binary(),
-    opt_start_time: nil | DateTime.t(),
-    opt_start_seq: nil | non_neg_integer()
-  }
+          durable_name: binary(),
+          deliver_policy: :all | :last | :new | :by_start_sequence | :by_start_time,
+          deliver_subject: nil | binary(),
+          ack_wait: nil | non_neg_integer(),
+          ack_policy: :none | :all | :explicit,
+          replay_policy: :instant | :original,
+          filter_subject: nil | binary(),
+          opt_start_time: nil | DateTime.t(),
+          opt_start_seq: nil | non_neg_integer()
+        }
 
   @type consumers :: %{
-    consumers: list(binary()),
-    limit: non_neg_integer(),
-    offset: non_neg_integer(),
-    total: non_neg_integer()
-  }
+          consumers: list(binary()),
+          limit: non_neg_integer(),
+          offset: non_neg_integer(),
+          total: non_neg_integer()
+        }
 
   @type t :: %__MODULE__{
-    stream_name: binary(),
-    name: binary(),
-  }
+          stream_name: binary(),
+          name: binary()
+        }
 
   @spec create(Gnat.t(), t()) :: {:ok, consumer_response()} | {:error, term()}
   def create(gnat, %__MODULE__{durable: true} = consumer) do
     create_topic = "$JS.API.CONSUMER.DURABLE.CREATE.#{consumer.stream_name}.#{consumer.name}"
+
     with {:ok, raw_response} <- request(gnat, create_topic, create_payload(consumer)) do
       {:ok, to_consumer_response(raw_response)}
     end
@@ -66,6 +68,7 @@ defmodule Jetstream.API.Consumer do
   @spec delete(Gnat.t(), binary(), binary()) :: :ok | {:error, any()}
   def delete(gnat, stream_name, consumer_name) do
     topic = "$JS.API.CONSUMER.DELETE.#{stream_name}.#{consumer_name}"
+
     with {:ok, _response} <- request(gnat, topic, "") do
       :ok
     end
@@ -74,16 +77,19 @@ defmodule Jetstream.API.Consumer do
   @spec info(Gnat.t(), binary(), binary()) :: {:ok, consumer_response()} | {:error, any()}
   def info(gnat, stream_name, consumer_name) do
     topic = "$JS.API.CONSUMER.INFO.#{stream_name}.#{consumer_name}"
+
     with {:ok, raw} <- request(gnat, topic, "") do
       {:ok, to_consumer_response(raw)}
     end
   end
 
-  @spec list(Gnat.t(), binary(), offset: non_neg_integer()) :: {:ok, consumers()} | {:error, term()}
+  @spec list(Gnat.t(), binary(), offset: non_neg_integer()) ::
+          {:ok, consumers()} | {:error, term()}
   def list(gnat, stream_name, params \\ []) do
-    payload = Jason.encode!(%{
-      offset: Keyword.get(params, :offset, 0)
-    })
+    payload =
+      Jason.encode!(%{
+        offset: Keyword.get(params, :offset, 0)
+      })
 
     with {:ok, raw} <- request(gnat, "$JS.API.CONSUMER.NAMES.#{stream_name}", payload) do
       response = %{
@@ -92,6 +98,7 @@ defmodule Jetstream.API.Consumer do
         limit: Map.get(raw, "limit"),
         total: Map.get(raw, "total")
       }
+
       {:ok, response}
     end
   end
@@ -108,7 +115,8 @@ defmodule Jetstream.API.Consumer do
         max_deliver: cons.max_deliver,
         replay_policy: cons.replay_policy
       }
-    } |> Jason.encode!()
+    }
+    |> Jason.encode!()
   end
 
   defp to_consumer_config(raw) do

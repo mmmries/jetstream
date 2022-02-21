@@ -2,19 +2,25 @@ defmodule Jetstream.PullConsumer do
   use GenServer
 
   def init(%{
-    connection_pid: connection_pid,
-    stream_name: stream_name,
-    consumer_name: consumer_name
-  }) do
+        connection_pid: connection_pid,
+        stream_name: stream_name,
+        consumer_name: consumer_name
+      }) do
     Process.link(connection_pid)
     listening_topic = "_CON.#{nuid()}"
     {:ok, _sid} = Gnat.sub(connection_pid, self(), listening_topic)
-    :ok = Gnat.pub(connection_pid, "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}", "1", reply_to: listening_topic)
+
+    :ok =
+      Gnat.pub(connection_pid, "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}", "1",
+        reply_to: listening_topic
+      )
+
     state = %{
       stream_name: stream_name,
       consumer_name: consumer_name,
       listening_topic: listening_topic
     }
+
     {:ok, state}
   end
 
@@ -28,9 +34,13 @@ defmodule Jetstream.PullConsumer do
 
   def handle_info(other, state) do
     require Logger
-    Logger.error("#{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message: #{inspect(other)}")
+
+    Logger.error(
+      "#{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message: #{inspect(other)}"
+    )
+
     {:noreply, state}
   end
 
-  defp nuid(), do: :crypto.strong_rand_bytes(12) |> Base.encode64
+  defp nuid(), do: :crypto.strong_rand_bytes(12) |> Base.encode64()
 end

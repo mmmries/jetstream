@@ -15,13 +15,15 @@ defmodule Jetstream.API.Util do
   end
 
   def to_datetime(nil), do: nil
+
   def to_datetime(str) do
     {:ok, datetime, _} = DateTime.from_iso8601(str)
     datetime
   end
 
   def to_sym(nil), do: nil
-  def to_sym(str) when is_binary(str) do\
+
+  def to_sym(str) when is_binary(str) do
     String.to_existing_atom(str)
   end
 end

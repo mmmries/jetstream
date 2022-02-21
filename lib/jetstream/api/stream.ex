@@ -19,46 +19,46 @@ defmodule Jetstream.API.Stream do
   @type nanoseconds :: non_neg_integer()
 
   @type stream_response :: %{
-    state: stream_state(),
-    config: t(),
-    created: DateTime.t()
-  }
+          state: stream_state(),
+          config: t(),
+          created: DateTime.t()
+        }
 
   @type stream_state :: %{
-    bytes: non_neg_integer(),
-    consumer_count: non_neg_integer(),
-    first_seq: non_neg_integer(),
-    first_ts: DateTime.t(),
-    last_seq: non_neg_integer(),
-    last_ts: DateTime.t(),
-    messages: non_neg_integer()
-  }
+          bytes: non_neg_integer(),
+          consumer_count: non_neg_integer(),
+          first_seq: non_neg_integer(),
+          first_ts: DateTime.t(),
+          last_seq: non_neg_integer(),
+          last_ts: DateTime.t(),
+          messages: non_neg_integer()
+        }
 
   @type streams :: %{
-    limit: non_neg_integer(),
-    offset: non_neg_integer(),
-    streams: list(binary()),
-    total: non_neg_integer()
-  }
+          limit: non_neg_integer(),
+          offset: non_neg_integer(),
+          streams: list(binary()),
+          total: non_neg_integer()
+        }
 
   @type t :: %__MODULE__{
-    name: binary(),
-    subjects: list(binary()),
-    max_age: nanoseconds(),
-    max_bytes: integer(),
-    max_msg_size: integer(),
-    max_msgs: integer(),
-    max_consumers: integer(),
-    retention: :limits | :workqueue | :interest,
-    discard: :old | :new,
-    duplicate_window: nanoseconds(),
-    storage: :file | :memory,
-    num_replicas: pos_integer()
-  }
+          name: binary(),
+          subjects: list(binary()),
+          max_age: nanoseconds(),
+          max_bytes: integer(),
+          max_msg_size: integer(),
+          max_msgs: integer(),
+          max_consumers: integer(),
+          retention: :limits | :workqueue | :interest,
+          discard: :old | :new,
+          duplicate_window: nanoseconds(),
+          storage: :file | :memory,
+          num_replicas: pos_integer()
+        }
 
   @doc "create a new stream, please see https://github.com/nats-io/jetstream#streams for details on supported arguments"
   @spec create(Gnat.t(), t()) :: {:ok, stream_response()} | {:error, any()}
-  def create(conn, %__MODULE__{}=stream) do
+  def create(conn, %__MODULE__{} = stream) do
     with :ok <- validate(stream),
          {:ok, stream} <-
            request(conn, "$JS.API.STREAM.CREATE.#{stream.name}", Jason.encode!(stream)) do
