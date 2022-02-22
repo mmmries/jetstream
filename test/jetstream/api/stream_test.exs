@@ -18,7 +18,12 @@ defmodule Jetstream.API.StreamTest do
              first_ts: ~U[0001-01-01 00:00:00Z],
              last_seq: 0,
              last_ts: ~U[0001-01-01 00:00:00Z],
-             messages: 0
+             messages: 0,
+             deleted: nil,
+             lost: nil,
+             num_deleted: nil,
+             num_subjects: nil,
+             subjects: nil
            }
 
     {:ok, %{streams: streams}} = Stream.list(conn)
@@ -49,7 +54,12 @@ defmodule Jetstream.API.StreamTest do
              first_ts: ~U[0001-01-01 00:00:00Z],
              last_seq: 0,
              last_ts: ~U[0001-01-01 00:00:00Z],
-             messages: 0
+             messages: 0,
+             deleted: nil,
+             lost: nil,
+             num_deleted: nil,
+             num_subjects: nil,
+             subjects: nil
            }
   end
 
