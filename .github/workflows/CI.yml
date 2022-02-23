@@ -8,14 +8,6 @@ on:
   schedule:
     - cron: "0 0 1 */1 *"
 
-services:
-  nats:
-    image: nats:latest
-    volumes:
-      - ./etc/ci/nats-server.conf:/etc/nats/nats-server.conf
-    ports:
-      - 4222:4222
-
 jobs:
   test:
     name: Elixir ${{matrix.pair.elixir}} / OTP ${{matrix.pair.otp}}
@@ -28,6 +20,14 @@ jobs:
             elixir: "1.10"
           - otp: "24"
             elixir: "main"
+
+    services:
+      nats:
+        image: nats:latest
+        volumes:
+          - ./etc/ci/nats-server.conf:/etc/nats/nats-server.conf
+        ports:
+          - 4222:4222
 
     env:
       MIX_ENV: test
