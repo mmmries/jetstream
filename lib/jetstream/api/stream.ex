@@ -100,7 +100,7 @@ defmodule Jetstream.API.Stream do
         }
 
   @type t :: %__MODULE__{
-          allow_rollup_hdrs: boolean(),
+          allow_rollup_hdrs: nil | boolean(),
           deny_delete: boolean(),
           deny_purge: boolean(),
           description: nil | binary(),
@@ -191,7 +191,7 @@ defmodule Jetstream.API.Stream do
 
   defp to_stream(stream) do
     %__MODULE__{
-      allow_rollup_hdrs: Map.fetch!(stream, "allow_rollup_hdrs"),
+      allow_rollup_hdrs: Map.get(stream, "allow_rollup_hdrs"),
       deny_delete: Map.fetch!(stream, "deny_delete"),
       deny_purge: Map.fetch!(stream, "deny_purge"),
       description: Map.get(stream, "description"),
