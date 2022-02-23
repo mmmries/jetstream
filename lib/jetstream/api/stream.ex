@@ -100,7 +100,7 @@ defmodule Jetstream.API.Stream do
         }
 
   @type t :: %__MODULE__{
-          allow_rollup_hdrs: nil | boolean(),
+          allow_rollup_hdrs: boolean(),
           deny_delete: boolean(),
           deny_purge: boolean(),
           description: nil | binary(),
@@ -191,9 +191,6 @@ defmodule Jetstream.API.Stream do
 
   defp to_stream(stream) do
     %__MODULE__{
-      allow_rollup_hdrs: Map.get(stream, "allow_rollup_hdrs"),
-      deny_delete: Map.fetch!(stream, "deny_delete"),
-      deny_purge: Map.fetch!(stream, "deny_purge"),
       description: Map.get(stream, "description"),
       discard: Map.fetch!(stream, "discard") |> to_sym(),
       duplicate_window: Map.get(stream, "duplicate_window"),
@@ -208,12 +205,16 @@ defmodule Jetstream.API.Stream do
       num_replicas: Map.fetch!(stream, "num_replicas"),
       placement: Map.get(stream, "placement"),
       retention: Map.fetch!(stream, "retention") |> to_sym(),
-      sealed: Map.fetch!(stream, "sealed"),
       sources: Map.get(stream, "sources"),
       storage: Map.fetch!(stream, "storage") |> to_sym(),
       subjects: Map.get(stream, "subjects"),
       template_owner: Map.get(stream, "template_owner")
     }
+    # Check for fields added in NATS versions higher than 2.2.0
+    |> put_if_exist(:allow_rollup_hdrs, stream, "allow_rollup_hdrs")
+    |> put_if_exist(:deny_delete, stream, "deny_delete")
+    |> put_if_exist(:deny_purge, stream, "deny_purge")
+    |> put_if_exist(:sealed, stream, "sealed")
   end
 
   defp to_stream_response(

@@ -83,13 +83,13 @@ defmodule Jetstream.API.ConsumerTest do
   test "failed creates" do
     consumer = %Consumer{durable_name: "STREAM2", stream_name: "STREAM2"}
 
-    assert Consumer.create(gnat(), consumer) ==
-             {:error, %{"code" => 404, "description" => "stream not found", "err_code" => 10059}}
+    assert {:error, %{"code" => 404, "description" => "stream not found"}} =
+             Consumer.create(gnat(), consumer)
   end
 
   test "failed deletes" do
-    assert Consumer.delete(gnat(), "STREAM3", "STREAM3") ==
-             {:error, %{"code" => 404, "description" => "stream not found", "err_code" => 10059}}
+    assert {:error, %{"code" => 404, "description" => "stream not found"}} =
+             Consumer.delete(gnat(), "STREAM3", "STREAM3")
   end
 
   test "getting consumer info" do
