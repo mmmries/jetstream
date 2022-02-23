@@ -1,4 +1,13 @@
 defmodule Jetstream.API.Stream do
+  @moduledoc """
+  A module representing a NATS JetStream Stream.
+
+  The struct's mandatory fields are `:name` and `:subjects`. The rest will have the NATS
+  default values set.
+
+  Learn more about Streams: https://docs.nats.io/nats-concepts/jetstream/streams.
+  """
+
   import Jetstream.API.Util
 
   @enforce_keys [:name, :subjects]
@@ -31,74 +40,73 @@ defmodule Jetstream.API.Stream do
 
   @type nanoseconds :: non_neg_integer()
 
-  @type stream_response :: %{
-          cluster:
-            nil
-            | %{
-                optional(:name) => binary(),
-                optional(:leader) => binary(),
-                optional(:replicas) =>
-                  list(%{
-                    :active => nanoseconds(),
-                    :name => binary(),
-                    :current => boolean(),
-                    optional(:offline) => boolean(),
-                    optional(:lag) => non_neg_integer()
-                  })
-              },
-          config: t(),
-          created: DateTime.t(),
-          mirror: nil | stream_source(),
-          sources: nil | list(stream_source()),
-          state: stream_state()
-        }
+  @typedoc """
+  Stream type fields explaination:
 
-  @type stream_state :: %{
-          bytes: non_neg_integer(),
-          consumer_count: non_neg_integer(),
-          deleted: nil | [non_neg_integer()],
-          first_seq: non_neg_integer(),
-          first_ts: DateTime.t(),
-          last_seq: non_neg_integer(),
-          last_ts: DateTime.t(),
-          lost: nil | list(%{msgs: [non_neg_integer()], bytes: non_neg_integer()}),
-          messages: non_neg_integer(),
-          num_deleted: nil | integer(),
-          num_subjects: nil | integer(),
-          subjects:
-            nil
-            | %{}
-            | %{
-                binary() => non_neg_integer()
-              }
-        }
+  * `:allow_rollup_hdrs`: allows the use of the Nats-Rollup header to replace all contents of a stream,
+    or subject in a stream, with a single new message.
 
-  @type streams :: %{
-          limit: non_neg_integer(),
-          offset: non_neg_integer(),
-          streams: list(binary()),
-          total: non_neg_integer()
-        }
+  * `:deny_delete`: restricts the ability to delete messages from a stream via the API. Cannot be changed
+    once set to true.
 
-  @type stream_source :: %{
-          :active => nanoseconds(),
-          :lag => non_neg_integer(),
-          :name => binary(),
-          optional(:external) =>
-            nil
-            | %{
-                api: binary(),
-                deliver: binary()
-              },
-          optional(:error) =>
-            nil
-            | %{
-                :code => integer(),
-                optional(:err_code) => nil | non_neg_integer(),
-                optional(:description) => nil | binary()
-              }
-        }
+  * `:deny_purge`: restricts the ability to purge messages from a stream via the API. Cannot be change
+    once set to true.
 
+  * `:description`: a short description of the purpose of this stream.
+
+  * `:discard`: determines what happens when a Stream reaches its limits. It has the following options:
+     - `:old` - the default option. Old messages are deleted.
+     - `:new` - refuses new messages.
+
+  * `:duplicate_window`: the window within which to track duplicate messages, expressed in nanoseconds.
+
+  * `:max_age`: maximum age of anny message in the Stream, expressed in nanoseconds.
+
+  * `:max_bytes`: how many bytes the Stream may contain. Adheres to `:discard`, removing oldest or
+    refusing new messages if the Stream exceeds this size.
+
+  * `:max_consumers`: how many Consumers can be defined for a given Stream, -1 for unlimited.
+
+  * `:max_msg_size`: the largest message that will be accepted by the Stream.
+
+  * `:max_msgs`: how many messages may be in a Stream. Adheres to `:discard`, removing oldest or refusing
+    new messages if the Stream exceeds this number of messages
+
+  * `:mirror`: maintains a 1:1 mirror of another stream with name matching this property.  When a mirror
+    is configured subjects and sources must be empty.
+
+  * `:name`: a name for the Stream.
+    See [naming](https://docs.nats.io/running-a-nats-service/nats_admin/jetstream_admin/naming).
+
+  * `:no_ack`: disables acknowledging messages that are received by the Stream.
+
+  * `:num_replicas`: how many replicas to keep for each message.
+
+  * `:placement`: placement directives to consider when placing replicas of this stream, random placement
+    when unset. It has the following properties:
+     - `:cluster`: the desired cluster name to place the stream.
+     - `:tags`: tags required on servers hosting this stream.
+
+  * `:retention`: how messages are retained in the Stream. Once this is exceeded, old messages are removed.
+    It has the following options:
+     - `:limits`: the default policy.
+     - `:interest`
+     - `:workqueue`
+
+  * `:sealed`: sealed streams do not allow messages to be deleted via limits or API, sealed streams can not
+    be unsealed via configuration update. Can only be set on already created streams via the Update API.
+
+  * `:sources`: list of stream names to replicate into this stream.
+
+  * `:storage`: the type of storage backend. Available options:
+     - `:file`
+     - `:memory`
+
+  * `:subjects`: a list of subjects to consume, supports wildcards.
+
+  * `:template_owner`: when the Stream is managed by a Stream Template this identifies the template that
+    manages the Stream.
+  """
   @type t :: %__MODULE__{
           allow_rollup_hdrs: boolean(),
           deny_delete: boolean(),
@@ -129,7 +137,106 @@ defmodule Jetstream.API.Stream do
           template_owner: nil | binary()
         }
 
-  @doc "create a new stream, please see https://github.com/nats-io/jetstream#streams for details on supported arguments"
+  @typedoc """
+  Stream source fields explained:
+
+  * `:name`: stream name.
+
+  * `:opt_start_seq`: sequence to start replicating from.
+
+  * `:opt_start_time`: timestamp to start replicationg from.
+
+  * `:filter_subject`: replicate only a subset of messages based if filter.
+
+  * `:external`: configuration referencing a stream source in another account or JetStream domain.
+    It has the following parameters:
+     - `:api`: the subject prefix that imports other account/domain `$JS.API.CONSUMER.>` subjects
+     - `:deliver`: the delivery subject to use for push consumer
+  """
+  @type stream_source :: %{
+          :name => binary(),
+          optional(:opt_start_seq) => integer(),
+          optional(:opt_start_time) => DateTime.t(),
+          optional(:filter_subject) => binary(),
+          optional(:external) => %{
+            api: binary(),
+            deliver: binary()
+          }
+        }
+
+  @type stream_response :: %{
+          cluster:
+            nil
+            | %{
+                optional(:name) => binary(),
+                optional(:leader) => binary(),
+                optional(:replicas) =>
+                  list(%{
+                    :active => nanoseconds(),
+                    :name => binary(),
+                    :current => boolean(),
+                    optional(:offline) => boolean(),
+                    optional(:lag) => non_neg_integer()
+                  })
+              },
+          config: t(),
+          created: DateTime.t(),
+          mirror: nil | stream_source_info(),
+          sources: nil | list(stream_source_info()),
+          state: stream_state()
+        }
+
+  @type stream_state :: %{
+          bytes: non_neg_integer(),
+          consumer_count: non_neg_integer(),
+          deleted: nil | [non_neg_integer()],
+          first_seq: non_neg_integer(),
+          first_ts: DateTime.t(),
+          last_seq: non_neg_integer(),
+          last_ts: DateTime.t(),
+          lost: nil | list(%{msgs: [non_neg_integer()], bytes: non_neg_integer()}),
+          messages: non_neg_integer(),
+          num_deleted: nil | integer(),
+          num_subjects: nil | integer(),
+          subjects:
+            nil
+            | %{}
+            | %{
+                binary() => non_neg_integer()
+              }
+        }
+
+  @type stream_source_info :: %{
+          :active => nanoseconds(),
+          :lag => non_neg_integer(),
+          :name => binary(),
+          optional(:external) => %{
+            api: binary(),
+            deliver: binary()
+          },
+          optional(:error) => %{
+            :code => integer(),
+            optional(:err_code) => nil | non_neg_integer(),
+            optional(:description) => nil | binary()
+          }
+        }
+
+  @type streams :: %{
+          limit: non_neg_integer(),
+          offset: non_neg_integer(),
+          streams: list(binary()),
+          total: non_neg_integer()
+        }
+
+  @doc """
+  Creates a new Stream.
+
+  ## Examples
+
+      iex> create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      {:ok, %{created: ~U[2022-02-23 14:21:42.876321Z]}}
+
+  """
   @spec create(Gnat.t(), t()) :: {:ok, stream_response()} | {:error, any()}
   def create(conn, %__MODULE__{} = stream) do
     with :ok <- validate(stream),
@@ -139,6 +246,18 @@ defmodule Jetstream.API.Stream do
     end
   end
 
+  @doc """
+  Deletes a Stream and all its data.
+
+  ## Examples
+
+      iex> delete(gnat, "stream)
+      :ok
+
+      iex> delete(gnat, "wrong_stream")
+      {:error, %{"code" => 404, "description" => "stream not found"}}
+
+  """
   @spec delete(Gnat.t(), binary()) :: :ok | {:error, any()}
   def delete(conn, stream_name) when is_binary(stream_name) do
     with {:ok, _response} <- request(conn, "$JS.API.STREAM.DELETE.#{stream_name}", "") do
@@ -146,6 +265,18 @@ defmodule Jetstream.API.Stream do
     end
   end
 
+  @doc """
+  Information about config and state of a Stream.
+
+  ## Examples
+
+      iex> info(gnat, "stream")
+      {:ok, %{cluster: nil, config: %{}, created: ~U[2022-02-23 14:21:42.876321Z], mirror: nil, sources: nil, state: %{}}}
+
+      iex> info(gnat, "wrong_stream")
+      {:error, %{"code" => 404, "description" => "stream not found"}}
+
+  """
   @spec info(Gnat.t(), binary()) :: {:ok, stream_response()} | {:error, any()}
   def info(conn, stream_name) when is_binary(stream_name) do
     with {:ok, decoded} <- request(conn, "$JS.API.STREAM.INFO.#{stream_name}", "") do
@@ -153,6 +284,18 @@ defmodule Jetstream.API.Stream do
     end
   end
 
+  @doc """
+  Paged list of known Streams including all their current information.
+
+  # Examples
+
+      iex> list(gnat)
+      {:ok, %{total: 2, offset: 0, limit: 1024, streams: ["stream1", "stream2"]}}
+
+      iex> list(gnat, offset: 10)
+      {:ok, %{total: 12, offset: 10, limit: 1024, streams: ["stream11", "stream12"]}}
+
+  """
   @spec list(Gnat.t(), offset: non_neg_integer()) :: {:ok, streams()} | {:error, term()}
   def list(conn, params \\ []) do
     payload =

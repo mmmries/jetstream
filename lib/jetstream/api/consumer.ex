@@ -2,7 +2,12 @@ defmodule Jetstream.API.Consumer do
   @moduledoc """
   A module representing a NATS JetStream Consumer.
 
-  Learn more about Consumers: https://docs.nats.io/nats-concepts/jetstream/consumers
+  The struct's only mandatory field to set is the `:stream_name`. The rest will have
+  the NATS default values set.
+
+  Note that Consumers are ephemeral by default. Set the `:durable_name` to make it durable.
+
+  Learn more about Consumers: https://docs.nats.io/nats-concepts/jetstream/consumers.
   """
 
   import Jetstream.API.Util
@@ -78,6 +83,7 @@ defmodule Jetstream.API.Consumer do
 
   * `:durable_name`: the name of the Consumer, which the server will track, allowing resuming consumption
     where left off. By default, a Consumer is ephemeral. To make the Consumer durable, set the name.
+    See [naming](https://docs.nats.io/running-a-nats-service/nats_admin/jetstream_admin/naming).
 
   * `:filter_subject`: when consuming from a stream with a wildcard subject, this allows you to select
     a subset of the full wildcard subject to receive messages from.
@@ -234,7 +240,7 @@ defmodule Jetstream.API.Consumer do
   ## Examples
 
       iex> create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
-      {:ok, %{name: "consumer", stream_name: "stream"}}
+      {:ok, %{name: "consumer", stream_name: "stream", created: ~U[2022-02-23 14:21:42.876321Z]}}
 
       iex> create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream", deliver_policy: :by_start_sequence})
       {:error, %{"code" => 400, "description" => "consumer delivery policy is deliver by start sequence, but optional start sequence is not set"}}
