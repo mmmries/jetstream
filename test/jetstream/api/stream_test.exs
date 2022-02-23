@@ -7,7 +7,7 @@ defmodule Jetstream.API.StreamTest do
     {:ok, %{streams: streams}} = Stream.list(conn)
     assert streams == nil || !("LIST_TEST" in streams)
 
-    stream = %Stream{name: "LIST_TEST", subjects: ["STREAM TEST"]}
+    stream = %Stream{name: "LIST_TEST", subjects: ["STREAM_TEST"]}
     {:ok, response} = Stream.create(conn, stream)
     assert response.config == stream
 
