@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    name: Elixir ${{matrix.pair.elixir}} / OTP ${{matrix.pair.otp}}
+    name: Elixir ${{ matrix.pair.elixir }} / OTP ${{ matrix.pair.otp }} / NATS ${{ matrix.pair.nats }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -18,16 +18,11 @@ jobs:
         pair:
           - otp: "23"
             elixir: "1.10"
+            nats: "2.0.0"
+
           - otp: "24"
             elixir: "main"
-
-    services:
-      nats:
-        image: nats:latest
-        volumes:
-          - ${{ github.workspace }}/etc/ci/nats-server.conf:/etc/nats/nats-server.conf
-        ports:
-          - 4222:4222
+            nats: "latest"
 
     env:
       MIX_ENV: test
@@ -41,6 +36,9 @@ jobs:
         with:
           elixir-version: ${{ matrix.pair.elixir }}
           otp-version: ${{ matrix.pair.otp }}
+
+      - name: Start NATS Jetstream
+        run: docker run --rm -d --network host -p 4222:4222 nats:${{ matrix.pair.nats }} -js
 
       - name: Restore deps cache
         uses: actions/cache@v2
