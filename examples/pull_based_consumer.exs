@@ -32,7 +32,7 @@ Enum.each(1..10, fn(_) ->
   GenServer.start_link(
     Jetstream.PullConsumer,
     %{
-      connection_pid: pid,
+      connection_name: pid,
       stream_name: "TEST",
       consumer_name: "TEST"
     }

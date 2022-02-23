@@ -6,6 +6,7 @@ defmodule Jetstream.MixProject do
       app: :jetstream,
       version: "0.0.1-pre2",
       elixir: "~> 1.10",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
@@ -31,6 +32,9 @@ defmodule Jetstream.MixProject do
       {:ex_doc, "~> 0.28", only: :dev, runtime: false}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp package do
     [
