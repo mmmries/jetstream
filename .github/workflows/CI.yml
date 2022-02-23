@@ -18,7 +18,7 @@ jobs:
         pair:
           - otp: "23"
             elixir: "1.10"
-            nats: "2.0.0"
+            nats: "2.2.0"
 
           - otp: "24"
             elixir: "main"
@@ -38,7 +38,7 @@ jobs:
           otp-version: ${{ matrix.pair.otp }}
 
       - name: Start NATS Jetstream
-        run: docker run --rm -d --network host -p 4222:4222 nats:${{ matrix.pair.nats }} -js
+        run: docker run --rm -d --network host nats:${{ matrix.pair.nats }} -js
 
       - name: Restore deps cache
         uses: actions/cache@v2
