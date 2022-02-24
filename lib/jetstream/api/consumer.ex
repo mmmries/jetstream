@@ -75,7 +75,7 @@ defmodule Jetstream.API.Consumer do
        - `:last_per_subject`: the Consumer will start with the latest one for each filtered subject
          currently  in the stream.
 
-  * `:deliver_subject`: the subject to deliver observed messages. Not allowed to pull subscriptions.
+  * `:deliver_subject`: the subject to deliver observed messages. Not allowed for pull subscriptions.
     A delivery subject is required for queue subscribing as it configures a subject that all the queue
     Consumers should listen on.
 
@@ -97,15 +97,15 @@ defmodule Jetstream.API.Consumer do
   * `:idle_heartbeat`: if set, the server will regularly send a status message to the client while there
     are  no new messages to send. This lets the client know that the JetStream service is still up and
     running, even when there is no activity on the stream. The message status header will have a code of 100.
-    Unlike FlowControl, it will have no reply to address. It may have a description like
+    Unlike `:flow_control`, it will have no reply to address. It may have a description like
     "Idle Heartbeat".
 
-  * `:inactive_threshold`: duration that instructs the server to cleanup ephemeral Consumers that are
+  * `:inactive_threshold`: duration that instructs the server to clean up ephemeral Consumers that are
     inactive for that long.
 
   * `:max_ack_pending`: it sets the maximum number of messages without an acknowledgement that can be
-    outstanding, once this limit is reached message delivery will be suspended. It cannot be used with
-    `:ack_none` ack policy. This maximum number of pending acks applies for all of the Consumer's
+    outstanding, once this limit is reached, message delivery will be suspended. It cannot be used with
+    `:ack_none` ack policy. This maximum number of pending acks applies for all the Consumer's
     subscriber processes. A value of -1 means there can be any number of pending acks (i.e. no flow
     control).
 
