@@ -20,8 +20,8 @@ defmodule Jetstream.PullConsumer do
   end
   ```
 
-  You can then place your Pull Consumer in a supervision tree. Remember that you need to have a Gnat
-  conection set up.
+  You can then place your Pull Consumer in a supervision tree. Remember that you need to have the
+  `Gnat.ConnectionSupervisor` set up.
 
   ```
   defmodule MyApp.Application do
@@ -85,22 +85,11 @@ defmodule Jetstream.PullConsumer do
               consumer_name: binary()
             }
 
-      @spec init(init_arg :: settings()) :: {:ok, Jetstream.PullConsumer.settings()}
-      def init(init_arg) do
-        init_arg
-        |> Map.put(:module, __MODULE__)
-        |> Jetstream.PullConsumer.init()
-      end
-
       @spec child_spec(init_arg :: settings()) :: Jetstream.PullConsumer.settings()
       def child_spec(init_arg) do
         init_arg
         |> Map.put(:module, __MODULE__)
         |> Jetstream.PullConsumer.child_spec()
-      end
-
-      def handle_info(msg, state) do
-        Jetstream.PullConsumer.handle_info(msg, state)
       end
     end
   end

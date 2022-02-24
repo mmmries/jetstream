@@ -3,6 +3,22 @@ defmodule Jetstream.PullConsumerTest do
 
   alias Jetstream.API.{Consumer, Stream}
 
+  defmodule ExamplePullConsumer do
+    use Jetstream.PullConsumer
+
+    def handle_message(%{topic: "ackable"}) do
+      :ack
+    end
+
+    def handle_message(%{topic: "non-ackable"}) do
+      :nack
+    end
+
+    def handle_message(%{topic: "skippable"}) do
+      :noreply
+    end
+  end
+
   describe "PullConsumer" do
     test "consumes JetStream messages" do
       conn = start_supervised!({Gnat, %{}})
@@ -17,7 +33,7 @@ defmodule Jetstream.PullConsumerTest do
       {:ok, _response} = Consumer.create(conn, consumer)
 
       start_supervised!(
-        {Jetstream.ExamplePullConsumer,
+        {ExamplePullConsumer,
          %{
            connection_name: conn,
            stream_name: stream_name,
