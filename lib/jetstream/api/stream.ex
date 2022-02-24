@@ -41,7 +41,7 @@ defmodule Jetstream.API.Stream do
   @type nanoseconds :: non_neg_integer()
 
   @typedoc """
-  Stream type fields explaination:
+  Stream type fields explanation:
 
   * `:allow_rollup_hdrs`: allows the use of the Nats-Rollup header to replace all contents of a stream,
     or subject in a stream, with a single new message.
@@ -60,7 +60,7 @@ defmodule Jetstream.API.Stream do
 
   * `:duplicate_window`: the window within which to track duplicate messages, expressed in nanoseconds.
 
-  * `:max_age`: maximum age of anny message in the Stream, expressed in nanoseconds.
+  * `:max_age`: maximum age of any message in the Stream, expressed in nanoseconds.
 
   * `:max_bytes`: how many bytes the Stream may contain. Adheres to `:discard`, removing oldest or
     refusing new messages if the Stream exceeds this size.
@@ -287,7 +287,7 @@ defmodule Jetstream.API.Stream do
   @doc """
   Paged list of known Streams including all their current information.
 
-  # Examples
+  ## Examples
 
       iex> list(gnat)
       {:ok, %{total: 2, offset: 0, limit: 1024, streams: ["stream1", "stream2"]}}

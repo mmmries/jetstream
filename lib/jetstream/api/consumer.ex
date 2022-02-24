@@ -41,12 +41,12 @@ defmodule Jetstream.API.Consumer do
   ]
 
   @typedoc """
-  Consumer type fields explaination:
+  Consumer type fields explanation:
 
   * `:stream_name`: name of a stream the Consumer is pointing at.
 
   * `:ack_policy`: how the messages should be acknowledged. It has the following options:
-      - `:explicit`: the default policy. It means that each individial message must be acknowledged.
+      - `:explicit`: the default policy. It means that each individual message must be acknowledged.
         It is the only allowed option for pull Consumers.
       - `:none`: no need to ack messages, the server will assume ack on delivery.
       - `:all`: only the last received message needs to be acked, all the previous messages received
@@ -55,7 +55,7 @@ defmodule Jetstream.API.Consumer do
   * `:ack_wait`: time in nanoseconds that server will wait for an ack for any individual. If an ack
      is not received in time, the message will be redelivered.
 
-  * `:backoff`: list of durations that represents a retry time scale for NAK'd messages ir those being
+  * `:backoff`: list of durations that represents a retry timescale for NAK'd messages or those being
      normally retried.
 
   * `:deliver_group`: when set, will only deliver messages to subscriptions matching that group.
@@ -72,10 +72,10 @@ defmodule Jetstream.API.Consumer do
          should the message specified have been removed based on the stream limit policy.
        - `:by_start_time`: the Consumer will start with messages on or after this time. The Consumer is
          required to specify `:opt_start_time`, the time in the stream to start at.
-       - `:last_per_subject`: the Consumer will start with tle latest one for each filtered subject
+       - `:last_per_subject`: the Consumer will start with the latest one for each filtered subject
          currently  in the stream.
 
-  * `:deliver_subject`: the subject to deliver observed messages. Not allowed for pull subscritpions.
+  * `:deliver_subject`: the subject to deliver observed messages. Not allowed to pull subscriptions.
     A delivery subject is required for queue subscribing as it configures a subject that all the queue
     Consumers should listen on.
 
