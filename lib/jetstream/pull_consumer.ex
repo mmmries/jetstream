@@ -1,7 +1,7 @@
 defmodule Jetstream.PullConsumer do
   use GenServer
 
-  @callback handle_message(topic :: String.t(), message :: Gnat.message()) ::
+  @callback handle_message(message :: Gnat.message()) ::
               :ack | :nack | :noreply
 
   defmacro __using__(_opts) do
@@ -56,7 +56,7 @@ defmodule Jetstream.PullConsumer do
   end
 
   def handle_info({:msg, message}, state) do
-    case state.module.handle_message(message.topic, message.body) do
+    case state.module.handle_message(message) do
       :ack -> Jetstream.ack_next(message, state.listening_topic)
       :nack -> Jetstream.nack(message)
       :noreply -> nil
