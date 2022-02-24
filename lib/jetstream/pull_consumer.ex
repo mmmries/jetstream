@@ -65,7 +65,7 @@ defmodule Jetstream.PullConsumer do
 
   The client should be listening for acknowledgements on the `$JS.ACK.<stream>.<consumer>.>` subject.
   """
-  @callback handle_message(message :: Gnat.message()) ::
+  @callback handle_message(message :: Jetstream.message()) ::
               :ack | :nack | :noreply
 
   @type settings :: %{
