@@ -173,11 +173,10 @@ defmodule Jetstream.PullConsumer do
   def handle_info(other, state) do
     require Logger
 
-    Logger.error(
-      "#{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message: #{
-        inspect(other)
-      }"
-    )
+    Logger.error("""
+    #{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message:
+    #{inspect(other)}
+    """)
 
     {:noreply, state}
   end
