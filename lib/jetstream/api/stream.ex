@@ -120,7 +120,7 @@ defmodule Jetstream.API.Stream do
           max_consumers: integer(),
           max_msg_size: nil | integer(),
           max_msgs: integer(),
-          mirror: nil | stream_source(),
+          mirror: nil | source(),
           name: binary(),
           no_ack: nil | boolean(),
           num_replicas: pos_integer(),
@@ -132,7 +132,7 @@ defmodule Jetstream.API.Stream do
               },
           retention: :limits | :workqueue | :interest,
           sealed: boolean(),
-          sources: nil | list(stream_source()),
+          sources: nil | list(source()),
           storage: :file | :memory,
           subjects: nil | list(binary()),
           template_owner: nil | binary()
@@ -154,7 +154,7 @@ defmodule Jetstream.API.Stream do
      - `:api` - the subject prefix that imports other account/domain `$JS.API.CONSUMER.>` subjects
      - `:deliver` - the delivery subject to use for push consumer
   """
-  @type stream_source :: %{
+  @type source :: %{
           :name => binary(),
           optional(:opt_start_seq) => integer(),
           optional(:opt_start_time) => DateTime.t(),
@@ -165,7 +165,7 @@ defmodule Jetstream.API.Stream do
           }
         }
 
-  @type stream_response :: %{
+  @type info :: %{
           cluster:
             nil
             | %{
@@ -182,12 +182,12 @@ defmodule Jetstream.API.Stream do
               },
           config: t(),
           created: DateTime.t(),
-          mirror: nil | stream_source_info(),
-          sources: nil | list(stream_source_info()),
-          state: stream_state()
+          mirror: nil | source_info(),
+          sources: nil | list(source_info()),
+          state: state()
         }
 
-  @type stream_state :: %{
+  @type state :: %{
           bytes: non_neg_integer(),
           consumer_count: non_neg_integer(),
           deleted: nil | [non_neg_integer()],
@@ -207,7 +207,7 @@ defmodule Jetstream.API.Stream do
               }
         }
 
-  @type stream_source_info :: %{
+  @type source_info :: %{
           :active => nanoseconds(),
           :lag => non_neg_integer(),
           :name => binary(),
@@ -238,12 +238,12 @@ defmodule Jetstream.API.Stream do
       {:ok, %{created: ~U[2022-02-23 14:21:42.876321Z]}}
 
   """
-  @spec create(Gnat.t(), t()) :: {:ok, stream_response()} | {:error, any()}
+  @spec create(conn :: Gnat.t(), stream :: t()) :: {:ok, info()} | {:error, any()}
   def create(conn, %__MODULE__{} = stream) do
     with :ok <- validate(stream),
          {:ok, stream} <-
            request(conn, "$JS.API.STREAM.CREATE.#{stream.name}", Jason.encode!(stream)) do
-      {:ok, to_stream_response(stream)}
+      {:ok, to_info(stream)}
     end
   end
 
@@ -259,7 +259,7 @@ defmodule Jetstream.API.Stream do
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
-  @spec delete(Gnat.t(), binary()) :: :ok | {:error, any()}
+  @spec delete(conn :: Gnat.t(), stream_name :: binary()) :: :ok | {:error, any()}
   def delete(conn, stream_name) when is_binary(stream_name) do
     with {:ok, _response} <- request(conn, "$JS.API.STREAM.DELETE.#{stream_name}", "") do
       :ok
@@ -278,10 +278,11 @@ defmodule Jetstream.API.Stream do
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
-  @spec info(Gnat.t(), binary()) :: {:ok, stream_response()} | {:error, any()}
+  @spec info(conn :: Gnat.t(), stream_name :: binary()) ::
+          {:ok, info()} | {:error, any()}
   def info(conn, stream_name) when is_binary(stream_name) do
     with {:ok, decoded} <- request(conn, "$JS.API.STREAM.INFO.#{stream_name}", "") do
-      {:ok, to_stream_response(decoded)}
+      {:ok, to_info(decoded)}
     end
   end
 
@@ -297,7 +298,8 @@ defmodule Jetstream.API.Stream do
       {:ok, %{total: 12, offset: 10, limit: 1024, streams: ["stream11", "stream12"]}}
 
   """
-  @spec list(Gnat.t(), offset: non_neg_integer()) :: {:ok, streams()} | {:error, term()}
+  @spec list(conn :: Gnat.t(), params :: [offset: non_neg_integer()]) ::
+          {:ok, streams()} | {:error, term()}
   def list(conn, params \\ []) do
     payload =
       Jason.encode!(%{
@@ -361,9 +363,7 @@ defmodule Jetstream.API.Stream do
     |> put_if_exist(:sealed, stream, "sealed")
   end
 
-  defp to_stream_response(
-         %{"config" => config, "state" => state, "created" => created} = response
-       ) do
+  defp to_info(%{"config" => config, "state" => state, "created" => created} = response) do
     with {:ok, created, _} <- DateTime.from_iso8601(created) do
       %{
         cluster: Map.get(response, "cluster"),

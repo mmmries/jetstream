@@ -165,7 +165,7 @@ defmodule Jetstream.API.Consumer do
           sample_freq: nil | binary()
         }
 
-  @type consumer_response :: %{
+  @type info :: %{
           ack_floor: %{
             consumer_seq: non_neg_integer(),
             stream_seq: non_neg_integer()
@@ -185,7 +185,7 @@ defmodule Jetstream.API.Consumer do
                   }
                 ]
               },
-          config: consumer_config(),
+          config: config(),
           created: DateTime.t(),
           delivered: %{
             consumer_seq: non_neg_integer(),
@@ -200,7 +200,7 @@ defmodule Jetstream.API.Consumer do
           stream_name: binary()
         }
 
-  @type consumer_config :: %{
+  @type config :: %{
           ack_policy: :none | :all | :explicit,
           ack_wait: nil | non_neg_integer(),
           backoff: nil | [non_neg_integer()],
@@ -247,20 +247,20 @@ defmodule Jetstream.API.Consumer do
       {:error, %{"code" => 400, "description" => "consumer delivery policy is deliver by start sequence, but optional start sequence is not set"}}
 
   """
-  @spec create(Gnat.t(), t()) :: {:ok, consumer_response()} | {:error, term()}
-  def create(gnat, %__MODULE__{durable_name: name} = consumer) when not is_nil(name) do
+  @spec create(conn :: Gnat.t(), consumer :: t()) :: {:ok, info()} | {:error, term()}
+  def create(conn, %__MODULE__{durable_name: name} = consumer) when not is_nil(name) do
     create_topic = "$JS.API.CONSUMER.DURABLE.CREATE.#{consumer.stream_name}.#{name}"
 
-    with {:ok, raw_response} <- request(gnat, create_topic, create_payload(consumer)) do
-      {:ok, to_consumer_response(raw_response)}
+    with {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
+      {:ok, to_info(raw_response)}
     end
   end
 
-  def create(gnat, %__MODULE__{} = consumer) do
+  def create(conn, %__MODULE__{} = consumer) do
     create_topic = "$JS.API.CONSUMER.CREATE.#{consumer.stream_name}"
 
-    with {:ok, raw_response} <- request(gnat, create_topic, create_payload(consumer)) do
-      {:ok, to_consumer_response(raw_response)}
+    with {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
+      {:ok, to_info(raw_response)}
     end
   end
 
@@ -276,11 +276,12 @@ defmodule Jetstream.API.Consumer do
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
-  @spec delete(Gnat.t(), binary(), binary()) :: :ok | {:error, any()}
-  def delete(gnat, stream_name, consumer_name) do
+  @spec delete(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary()) ::
+          :ok | {:error, any()}
+  def delete(conn, stream_name, consumer_name) do
     topic = "$JS.API.CONSUMER.DELETE.#{stream_name}.#{consumer_name}"
 
-    with {:ok, _response} <- request(gnat, topic, "") do
+    with {:ok, _response} <- request(conn, topic, "") do
       :ok
     end
   end
@@ -298,12 +299,13 @@ defmodule Jetstream.API.Consumer do
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
-  @spec info(Gnat.t(), binary(), binary()) :: {:ok, consumer_response()} | {:error, any()}
-  def info(gnat, stream_name, consumer_name) do
+  @spec info(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary()) ::
+          {:ok, info()} | {:error, any()}
+  def info(conn, stream_name, consumer_name) do
     topic = "$JS.API.CONSUMER.INFO.#{stream_name}.#{consumer_name}"
 
-    with {:ok, raw} <- request(gnat, topic, "") do
-      {:ok, to_consumer_response(raw)}
+    with {:ok, raw} <- request(conn, topic, "") do
+      {:ok, to_info(raw)}
     end
   end
 
@@ -322,15 +324,15 @@ defmodule Jetstream.API.Consumer do
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
-  @spec list(Gnat.t(), binary(), offset: non_neg_integer()) ::
+  @spec list(conn :: Gnat.t(), stream_name :: binary(), params :: [offset: non_neg_integer()]) ::
           {:ok, consumers()} | {:error, term()}
-  def list(gnat, stream_name, params \\ []) do
+  def list(conn, stream_name, params \\ []) do
     payload =
       Jason.encode!(%{
         offset: Keyword.get(params, :offset, 0)
       })
 
-    with {:ok, raw} <- request(gnat, "$JS.API.CONSUMER.NAMES.#{stream_name}", payload) do
+    with {:ok, raw} <- request(conn, "$JS.API.CONSUMER.NAMES.#{stream_name}", payload) do
       response = %{
         consumers: Map.get(raw, "consumers"),
         limit: Map.get(raw, "limit"),
@@ -374,7 +376,7 @@ defmodule Jetstream.API.Consumer do
     |> Jason.encode!()
   end
 
-  defp to_consumer_config(raw) do
+  defp to_config(raw) do
     %{
       ack_policy: raw |> Map.get("ack_policy") |> to_sym(),
       ack_wait: raw |> Map.get("ack_wait"),
@@ -402,14 +404,14 @@ defmodule Jetstream.API.Consumer do
     }
   end
 
-  defp to_consumer_response(raw) do
+  defp to_info(raw) do
     %{
       ack_floor: %{
         consumer_seq: get_in(raw, ["ack_floor", "consumer_seq"]),
         stream_seq: get_in(raw, ["ack_floor", "stream_seq"])
       },
       cluster: Map.get(raw, "cluster"),
-      config: to_consumer_config(Map.get(raw, "config")),
+      config: to_config(Map.get(raw, "config")),
       created: raw |> Map.get("created") |> to_datetime(),
       delivered: %{
         consumer_seq: get_in(raw, ["delivered", "consumer_seq"]),
