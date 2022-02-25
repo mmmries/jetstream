@@ -40,7 +40,9 @@ defmodule Jetstream.PullConsumerTest do
         !(stream_variant == :non_existing && consumer_variant == :existing) do
       @tag stream_variant: stream_variant
       @tag consumer_variant: consumer_variant
-      test "consumes JetStream messages when stream is #{stream_variant} and consumer is #{consumer_variant}",
+      test "consumes JetStream messages when stream is #{stream_variant} and consumer is #{
+             consumer_variant
+           }",
            %{
              stream_variant: stream_variant,
              consumer_variant: consumer_variant,
