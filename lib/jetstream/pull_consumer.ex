@@ -90,18 +90,24 @@ defmodule Jetstream.PullConsumer do
     quote do
       @behaviour Jetstream.PullConsumer
 
-      @type settings :: %{
-              connection_name: pid() | atom(),
-              stream: binary() | Jetstream.API.Stream.t(),
-              consumer: binary() | Jetstream.API.Consumer.t()
-            }
-
-      @spec child_spec(init_arg :: settings()) :: Jetstream.PullConsumer.settings()
+      @doc """
+      Returns a specification to start this module under a supervisor.
+      See `Supervisor`.
+      """
+      @spec child_spec(
+              init_arg :: %{
+                connection_name: pid() | atom(),
+                stream: binary() | Jetstream.API.Stream.t(),
+                consumer: binary() | Jetstream.API.Consumer.t()
+              }
+            ) :: Jetstream.PullConsumer.settings()
       def child_spec(init_arg) do
         init_arg
         |> Map.put(:module, __MODULE__)
         |> Jetstream.PullConsumer.child_spec()
       end
+
+      defoverridable child_spec: 1
     end
   end
 
@@ -168,9 +174,7 @@ defmodule Jetstream.PullConsumer do
     require Logger
 
     Logger.error(
-      "#{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message: #{
-        inspect(other)
-      }"
+      "#{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message: #{inspect(other)}"
     )
 
     {:noreply, state}
