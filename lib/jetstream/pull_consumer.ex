@@ -174,7 +174,9 @@ defmodule Jetstream.PullConsumer do
     require Logger
 
     Logger.error(
-      "#{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message: #{inspect(other)}"
+      "#{__MODULE__} for #{state.stream_name}.#{state.consumer_name} received unexpected message: #{
+        inspect(other)
+      }"
     )
 
     {:noreply, state}
