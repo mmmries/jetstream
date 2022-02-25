@@ -2,12 +2,109 @@ defmodule Jetstream.API.Consumer do
   @moduledoc """
   A module representing a NATS JetStream Consumer.
 
+  Learn more about consumers: https://docs.nats.io/nats-concepts/jetstream/consumers.
+
+  ## The Jetstream.API.Consumer struct
+
   The struct's only mandatory field to set is the `:stream_name`. The rest will have
   the NATS default values set.
 
-  Note that Consumers are ephemeral by default. Set the `:durable_name` to make it durable.
+  Note that consumers are ephemeral by default. Set the `:durable_name` to make it durable.
 
-  Learn more about Consumers: https://docs.nats.io/nats-concepts/jetstream/consumers.
+  Consumer struct fields explanation:
+
+  * `:stream_name`: name of a stream the consumer is pointing at.
+
+  * `:ack_policy`: how the messages should be acknowledged. It has the following options:
+      - `:explicit`: the default policy. It means that each individual message must be acknowledged.
+        It is the only allowed option for pull consumers.
+      - `:none`: no need to ack messages, the server will assume ack on delivery.
+      - `:all`: only the last received message needs to be acked, all the previous messages received
+        are automatically acknowledged.
+
+  * `:ack_wait`: time in nanoseconds that server will wait for an ack for any individual. If an ack
+     is not received in time, the message will be redelivered.
+
+  * `:backoff`: list of durations that represents a retry timescale for NAK'd messages or those being
+     normally retried.
+
+  * `:deliver_group`: when set, will only deliver messages to subscriptions matching that group.
+
+  * `:deliver_policy`: specifies where in the stream it wants to start receiving messages. It has the
+     following options:
+       - `:all`: the default policy. The consumer will start receiving from the earliest available
+         message.
+       - `:last`: the consumer will start receiving messages with the last message added to the stream.
+       - `:new`: the consumer will only start receiving messages that were created after the customer
+         was created.
+       - `:by_start_sequence`: the consumer is required to specify `:opt_start_seq`, the sequence number
+         to start on. It will receive the closest available message moving forward in the sequence
+         should the message specified have been removed based on the stream limit policy.
+       - `:by_start_time`: the consumer will start with messages on or after this time. The consumer is
+         required to specify `:opt_start_time`, the time in the stream to start at.
+       - `:last_per_subject`: the consumer will start with the latest one for each filtered subject
+         currently  in the stream.
+
+  * `:deliver_subject`: the subject to deliver observed messages. Not allowed for pull subscriptions.
+    A delivery subject is required for queue subscribing as it configures a subject that all the queue
+    consumers should listen on.
+
+  * `:description`: a short description of the purpose of this customer.
+
+  * `:durable_name`: the name of the consumer, which the server will track, allowing resuming consumption
+    where left off. By default, a consumer is ephemeral. To make the consumer durable, set the name.
+    See [naming](https://docs.nats.io/running-a-nats-service/nats_admin/jetstream_admin/naming).
+
+  * `:filter_subject`: when consuming from a stream with a wildcard subject, this allows you to select
+    a subset of the full wildcard subject to receive messages from.
+
+  * `:flow_control`: when set to true, an empty message with Status header 100 and a reply subject will
+    be sent. Consumers must reply to these messages to control the rate of message delivery.
+
+  * `:headers_only`: delivers only the headers of messages in the stream and not the bodies. Additionally
+    adds the Nats-Msg-Size header to indicate the size of the removed payload.
+
+  * `:idle_heartbeat`: if set, the server will regularly send a status message to the client while there
+    are  no new messages to send. This lets the client know that the JetStream service is still up and
+    running, even when there is no activity on the stream. The message status header will have a code of 100.
+    Unlike `:flow_control`, it will have no reply to address. It may have a description like
+    "Idle Heartbeat".
+
+  * `:inactive_threshold`: duration that instructs the server to clean up ephemeral consumers that are
+    inactive for that long.
+
+  * `:max_ack_pending`: it sets the maximum number of messages without an acknowledgement that can be
+    outstanding, once this limit is reached, message delivery will be suspended. It cannot be used with
+    `:ack_none` ack policy. This maximum number of pending acks applies for all the consumer's
+    subscriber processes. A value of -1 means there can be any number of pending acks (i.e. no flow
+    control).
+
+  * `:max_batch`: the largest batch property that may be specified when doing a pull on a Pull consumer.
+
+  * `:max_deliver`: the maximum number of times a specific message will be delivered. Applies to any
+    message that is re-sent due to ack policy.
+
+  * `:max_expires`: the maximum expires value that may be set when doing a pull on a Pull consumer.
+
+  * `:max_waiting`: the number of pulls that can be outstanding on a pull consumer, pulls received after
+    this is reached are ignored.
+
+  * `:opt_start_seq`: use with `:deliver_policy` set to `:by_start_sequence`. It represents the sequence
+    number to start consuming on.
+
+  * `:opt_start_time`: use with `:deliver_policy` set to `:by_start_time`. It represents the time to start
+    consuming at.
+
+  * `:rate_limit_bps`: used to throttle the delivery of messages to the consumer, in bits per second.
+
+  * `:replay_policy`: it applies when the `:deliver_policy` is set to `:all`, `:by_start_sequence` or
+    `:by_start_time`. It has the following options:
+       - `:instant`: the default policy. The messages will be pushed to the client as fast as possible.
+       - `:original`: the messages in the stream will be pushed to the client at the same rate that they
+         were originally received.
+
+  * `:sample_freq`: Sets the percentage of acknowledgements that should be sampled for observability, 0-100.
+    This value is a binary and for example allows both `30` and `30%` as valid values.
   """
 
   import Jetstream.API.Util
@@ -40,102 +137,6 @@ defmodule Jetstream.API.Consumer do
     replay_policy: :instant
   ]
 
-  @typedoc """
-  Consumer type fields explanation:
-
-  * `:stream_name`: name of a stream the Consumer is pointing at.
-
-  * `:ack_policy`: how the messages should be acknowledged. It has the following options:
-      - `:explicit`: the default policy. It means that each individual message must be acknowledged.
-        It is the only allowed option for pull Consumers.
-      - `:none`: no need to ack messages, the server will assume ack on delivery.
-      - `:all`: only the last received message needs to be acked, all the previous messages received
-        are automatically acknowledged.
-
-  * `:ack_wait`: time in nanoseconds that server will wait for an ack for any individual. If an ack
-     is not received in time, the message will be redelivered.
-
-  * `:backoff`: list of durations that represents a retry timescale for NAK'd messages or those being
-     normally retried.
-
-  * `:deliver_group`: when set, will only deliver messages to subscriptions matching that group.
-
-  * `:deliver_policy`: specifies where in the stream it wants to start receiving messages. It has the
-     following options:
-       - `:all`: the default policy. The Consumer will start receiving from the earliest available
-         message.
-       - `:last`: the Consumer will start receiving messages with the last message added to the stream.
-       - `:new`: the Consumer will only start receiving messages that were created after the customer
-         was created.
-       - `:by_start_sequence`: the Consumer is required to specify `:opt_start_seq`, the sequence number
-         to start on. It will receive the closest available message moving forward in the sequence
-         should the message specified have been removed based on the stream limit policy.
-       - `:by_start_time`: the Consumer will start with messages on or after this time. The Consumer is
-         required to specify `:opt_start_time`, the time in the stream to start at.
-       - `:last_per_subject`: the Consumer will start with the latest one for each filtered subject
-         currently  in the stream.
-
-  * `:deliver_subject`: the subject to deliver observed messages. Not allowed for pull subscriptions.
-    A delivery subject is required for queue subscribing as it configures a subject that all the queue
-    Consumers should listen on.
-
-  * `:description`: a short description of the purpose of this customer.
-
-  * `:durable_name`: the name of the Consumer, which the server will track, allowing resuming consumption
-    where left off. By default, a Consumer is ephemeral. To make the Consumer durable, set the name.
-    See [naming](https://docs.nats.io/running-a-nats-service/nats_admin/jetstream_admin/naming).
-
-  * `:filter_subject`: when consuming from a stream with a wildcard subject, this allows you to select
-    a subset of the full wildcard subject to receive messages from.
-
-  * `:flow_control`: when set to true, an empty message with Status header 100 and a reply subject will
-    be sent. Consumers must reply to these messages to control the rate of message delivery.
-
-  * `:headers_only`: delivers only the headers of messages in the stream and not the bodies. Additionally
-    adds the Nats-Msg-Size header to indicate the size of the removed payload.
-
-  * `:idle_heartbeat`: if set, the server will regularly send a status message to the client while there
-    are  no new messages to send. This lets the client know that the JetStream service is still up and
-    running, even when there is no activity on the stream. The message status header will have a code of 100.
-    Unlike `:flow_control`, it will have no reply to address. It may have a description like
-    "Idle Heartbeat".
-
-  * `:inactive_threshold`: duration that instructs the server to clean up ephemeral Consumers that are
-    inactive for that long.
-
-  * `:max_ack_pending`: it sets the maximum number of messages without an acknowledgement that can be
-    outstanding, once this limit is reached, message delivery will be suspended. It cannot be used with
-    `:ack_none` ack policy. This maximum number of pending acks applies for all the Consumer's
-    subscriber processes. A value of -1 means there can be any number of pending acks (i.e. no flow
-    control).
-
-  * `:max_batch`: the largest batch property that may be specified when doing a pull on a Pull Consumer.
-
-  * `:max_deliver`: the maximum number of times a specific message will be delivered. Applies to any
-    message that is re-sent due to ack policy.
-
-  * `:max_expires`: the maximum expires value that may be set when doing a pull on a Pull Consumer.
-
-  * `:max_waiting`: the number of pulls that can be outstanding on a pull Consumer, pulls received after
-    this is reached are ignored.
-
-  * `:opt_start_seq`: use with `:deliver_policy` set to `:by_start_sequence`. It represents the sequence
-    number to start consuming on.
-
-  * `:opt_start_time`: use with `:deliver_policy` set to `:by_start_time`. It represents the time to start
-    consuming at.
-
-  * `:rate_limit_bps`: used to throttle the delivery of messages to the Consumer, in bits per second.
-
-  * `:replay_policy`: it applies when the `:deliver_policy` is set to `:all`, `:by_start_sequence` or
-    `:by_start_time`. It has the following options:
-       - `:instant`: the default policy. The messages will be pushed to the client as fast as possible.
-       - `:original`: the messages in the stream will be pushed to the client at the same rate that they
-         were originally received.
-
-  * `:sample_freq`: Sets the percentage of acknowledgements that should be sampled for observability, 0-100.
-    This value is a binary and for example allows both `30` and `30%` as valid values.
-  """
   @type t :: %__MODULE__{
           stream_name: binary(),
           ack_policy: :none | :all | :explicit,
@@ -234,8 +235,8 @@ defmodule Jetstream.API.Consumer do
         }
 
   @doc """
-  Creates a Consumer. When Consumer's `:durable_name` field is not set, the function
-  creates an ephemeral Consumer. Otherwise, it creates a durable Consumer.
+  Creates a consumer. When consumer's `:durable_name` field is not set, the function
+  creates an ephemeral consumer. Otherwise, it creates a durable consumer.
 
   ## Examples
 
@@ -264,7 +265,7 @@ defmodule Jetstream.API.Consumer do
   end
 
   @doc """
-  Deletes a Consumer.
+  Deletes a consumer.
 
   ## Examples
 
@@ -285,7 +286,7 @@ defmodule Jetstream.API.Consumer do
   end
 
   @doc """
-  Information about the Consumer.
+  Information about the consumer.
 
   ## Examples
 
@@ -307,7 +308,7 @@ defmodule Jetstream.API.Consumer do
   end
 
   @doc """
-  Paged list of known Consumers including their current info.
+  Paged list of known consumers, including their current info.
 
   ## Examples
 

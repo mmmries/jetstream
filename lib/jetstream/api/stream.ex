@@ -2,46 +2,14 @@ defmodule Jetstream.API.Stream do
   @moduledoc """
   A module representing a NATS JetStream Stream.
 
+  Learn more about Streams: https://docs.nats.io/nats-concepts/jetstream/streams.
+
+  ## The Jetstream.API.Stream struct`
+
   The struct's mandatory fields are `:name` and `:subjects`. The rest will have the NATS
   default values set.
 
-  Learn more about Streams: https://docs.nats.io/nats-concepts/jetstream/streams.
-  """
-
-  import Jetstream.API.Util
-
-  @enforce_keys [:name, :subjects]
-  @derive Jason.Encoder
-  defstruct [
-    :description,
-    :mirror,
-    :name,
-    :no_ack,
-    :placement,
-    :sources,
-    :subjects,
-    :template_owner,
-    allow_rollup_hdrs: false,
-    deny_delete: false,
-    deny_purge: false,
-    discard: :old,
-    duplicate_window: 120_000_000_000,
-    max_age: 0,
-    max_bytes: -1,
-    max_consumers: -1,
-    max_msg_size: -1,
-    max_msgs_per_subject: -1,
-    max_msgs: -1,
-    num_replicas: 1,
-    retention: :limits,
-    sealed: false,
-    storage: :file
-  ]
-
-  @type nanoseconds :: non_neg_integer()
-
-  @typedoc """
-  Stream type fields explanation:
+  Stream struct fields explanation:
 
   * `:allow_rollup_hdrs`: allows the use of the Nats-Rollup header to replace all contents of a stream,
     or subject in a stream, with a single new message.
@@ -107,6 +75,39 @@ defmodule Jetstream.API.Stream do
   * `:template_owner`: when the Stream is managed by a Stream Template this identifies the template that
     manages the Stream.
   """
+
+  import Jetstream.API.Util
+
+  @enforce_keys [:name, :subjects]
+  @derive Jason.Encoder
+  defstruct [
+    :description,
+    :mirror,
+    :name,
+    :no_ack,
+    :placement,
+    :sources,
+    :subjects,
+    :template_owner,
+    allow_rollup_hdrs: false,
+    deny_delete: false,
+    deny_purge: false,
+    discard: :old,
+    duplicate_window: 120_000_000_000,
+    max_age: 0,
+    max_bytes: -1,
+    max_consumers: -1,
+    max_msg_size: -1,
+    max_msgs_per_subject: -1,
+    max_msgs: -1,
+    num_replicas: 1,
+    retention: :limits,
+    sealed: false,
+    storage: :file
+  ]
+
+  @type nanoseconds :: non_neg_integer()
+
   @type t :: %__MODULE__{
           allow_rollup_hdrs: boolean(),
           deny_delete: boolean(),
@@ -144,9 +145,9 @@ defmodule Jetstream.API.Stream do
 
   * `:opt_start_seq`: sequence to start replicating from.
 
-  * `:opt_start_time`: timestamp to start replicationg from.
+  * `:opt_start_time`: timestamp to start replicating from.
 
-  * `:filter_subject`: replicate only a subset of messages based if filter.
+  * `:filter_subject`: replicate only a subset of messages based on filter.
 
   * `:external`: configuration referencing a stream source in another account or JetStream domain.
     It has the following parameters:
