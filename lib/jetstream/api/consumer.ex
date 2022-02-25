@@ -2,7 +2,7 @@ defmodule Jetstream.API.Consumer do
   @moduledoc """
   A module representing a NATS JetStream Consumer.
 
-  Learn more about consumers: https://docs.nats.io/nats-concepts/jetstream/consumers.
+  Learn more about consumers: https://docs.nats.io/nats-concepts/jetstream/consumers
 
   ## The Jetstream.API.Consumer struct
 

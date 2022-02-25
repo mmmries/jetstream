@@ -2,9 +2,9 @@ defmodule Jetstream.API.Stream do
   @moduledoc """
   A module representing a NATS JetStream Stream.
 
-  Learn more about Streams: https://docs.nats.io/nats-concepts/jetstream/streams.
+  Learn more about Streams: https://docs.nats.io/nats-concepts/jetstream/streams
 
-  ## The Jetstream.API.Stream struct`
+  ## The Jetstream.API.Stream struct
 
   The struct's mandatory fields are `:name` and `:subjects`. The rest will have the NATS
   default values set.
