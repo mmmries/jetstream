@@ -8,17 +8,17 @@ defmodule Jetstream do
 
   @type message :: Gnat.message()
 
-  @spec ack(message()) :: :ok
+  @spec ack(message :: message()) :: :ok
   def ack(%{gnat: gnat, reply_to: reply_to}) do
     Gnat.pub(gnat, reply_to, "")
   end
 
-  @spec ack_next(message(), binary()) :: :ok
+  @spec ack_next(message :: message(), consumer_subject :: binary()) :: :ok
   def ack_next(%{gnat: gnat, reply_to: reply_to}, consumer_topic) do
     Gnat.pub(gnat, reply_to, "+NXT", reply_to: consumer_topic)
   end
 
-  @spec nack(message()) :: :ok
+  @spec nack(message :: message()) :: :ok
   def nack(%{gnat: gnat, reply_to: reply_to}) do
     Gnat.pub(gnat, reply_to, "-NAK")
   end

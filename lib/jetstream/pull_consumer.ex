@@ -36,14 +36,25 @@ defmodule Jetstream.PullConsumer do
         {MyApp.PullConsumer,
           %{
             connection_name: :gnat,
-            stream_name: "TEST",
-            consumer_name: "TEST"
+            stream: %Jetstream.API.Stream{name: "TEST_STREAM", subjects: "test"},
+            consumer: %Jetstream.API.Consumer{stream_name: "TEST_STREAM", name: "TEST_CONSUMER"}
           }}
       ]
       opts = [strategy: :one_for_one]
       Supervisor.start_link(children, opts)
     end
   end
+  ```
+
+  The above will create a new stream and consumer. You can use existing stream/consumer by providing its
+  name:
+
+  ```
+  %{
+    connection_name: :gnat,
+    stream: "TEST_STREAM",
+    consumer: "TEST_CONSUMER"
+  }
   ```
   """
 
@@ -55,13 +66,13 @@ defmodule Jetstream.PullConsumer do
 
   Possible return values explained:
 
-  * `:ack`: acknowledges the message was handled and requests delivery of the next message to the reply
+  * `:ack` - acknowledges the message was handled and requests delivery of the next message to the reply
     subject.
 
-  * `:nack`: signals that the message will not be processed now and processing can move onto the next
+  * `:nack` - signals that the message will not be processed now and processing can move onto the next
     message, NAK'd message will be retried.
 
-  * `:noreply`: nothing is sent.
+  * `:noreply` - nothing is sent.
 
   The client should be listening for acknowledgements on the `$JS.ACK.<stream>.<consumer>.>` subject.
   """
@@ -70,8 +81,8 @@ defmodule Jetstream.PullConsumer do
 
   @type settings :: %{
           connection_name: pid() | atom(),
-          stream_name: binary(),
-          consumer_name: binary(),
+          stream_name: binary() | Jetstream.API.Stream.t(),
+          consumer_name: binary() | Jetstream.API.Consumer.t(),
           module: atom()
         }
 
@@ -81,8 +92,8 @@ defmodule Jetstream.PullConsumer do
 
       @type settings :: %{
               connection_name: pid() | atom(),
-              stream_name: binary(),
-              consumer_name: binary()
+              stream: binary() | Jetstream.API.Stream.t(),
+              consumer: binary() | Jetstream.API.Consumer.t()
             }
 
       @spec child_spec(init_arg :: settings()) :: Jetstream.PullConsumer.settings()
@@ -101,13 +112,29 @@ defmodule Jetstream.PullConsumer do
 
   def init(%{
         connection_name: connection_name,
-        stream_name: stream_name,
-        consumer_name: consumer_name,
+        stream: stream,
+        consumer: consumer,
         module: module
       }) do
     if is_pid(connection_name),
       do: Process.link(connection_name),
       else: Process.whereis(connection_name) |> Process.link()
+
+    stream_name =
+      if is_binary(stream) do
+        stream
+      else
+        {:ok, _response} = Jetstream.API.Stream.create(connection_name, stream)
+        stream.name
+      end
+
+    consumer_name =
+      if is_binary(consumer) do
+        consumer
+      else
+        {:ok, _response} = Jetstream.API.Consumer.create(connection_name, consumer)
+        consumer.name
+      end
 
     listening_topic = "_CON.#{nuid()}"
     {:ok, _sid} = Gnat.sub(connection_name, self(), listening_topic)

@@ -33,8 +33,8 @@ Enum.each(1..10, fn(_) ->
     Jetstream.PullConsumer,
     %{
       connection_name: pid,
-      stream_name: "TEST",
-      consumer_name: "TEST"
+      stream: "TEST",
+      consumer: "TEST"
     }
   )
 end)
