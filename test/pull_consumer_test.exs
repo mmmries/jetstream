@@ -35,7 +35,7 @@ defmodule Jetstream.PullConsumerTest do
       }
     end
 
-    for stream_variant <- [:exisiting, :non_existing],
+    for stream_variant <- [:existing, :non_existing],
         consumer_variant <- [:existing, :non_existing],
         !(stream_variant == :non_existing && consumer_variant == :existing) do
       @tag stream_variant: stream_variant
