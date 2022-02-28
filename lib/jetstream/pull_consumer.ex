@@ -114,49 +114,72 @@ defmodule Jetstream.PullConsumer do
     GenServer.start_link(__MODULE__, settings, options)
   end
 
-  def init(%{
+  def init(arg) do
+    {:ok, arg, {:continue, :connect}}
+  end
+
+  def handle_continue(:connect, %{
         connection_name: connection_name,
         stream: stream,
         consumer: consumer,
         module: module
       }) do
-    if is_pid(connection_name),
-      do: Process.link(connection_name),
-      else: Process.whereis(connection_name) |> Process.link()
+    with {:ok, conn} <- connection_pid(connection_name),
+         {:ok, _response} <- create_stream(conn, stream),
+         {:ok, _response} <- create_consumer(conn, consumer),
+         listening_topic = "_CON.#{nuid()}",
+         {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
+         :ok <-
+           Gnat.pub(
+             conn,
+             "$JS.API.CONSUMER.MSG.NEXT.#{stream_name(stream)}.#{consumer_name(consumer)}",
+             "1",
+             reply_to: listening_topic
+           ) do
+      Process.link(conn)
 
-    stream_name =
-      if is_binary(stream) do
-        stream
-      else
-        {:ok, _response} = Jetstream.API.Stream.create(connection_name, stream)
-        stream.name
-      end
+      state = %{
+        stream_name: stream_name(stream),
+        consumer_name: consumer_name(consumer),
+        listening_topic: listening_topic,
+        module: module
+      }
 
-    consumer_name =
-      if is_binary(consumer) do
-        consumer
-      else
-        {:ok, _response} = Jetstream.API.Consumer.create(connection_name, consumer)
-        consumer.name
-      end
-
-    listening_topic = "_CON.#{nuid()}"
-    {:ok, _sid} = Gnat.sub(connection_name, self(), listening_topic)
-
-    :ok =
-      Gnat.pub(connection_name, "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}", "1",
-        reply_to: listening_topic
-      )
-
-    state = %{
-      stream_name: stream_name,
-      consumer_name: consumer_name,
-      listening_topic: listening_topic,
-      module: module
-    }
-
-    {:ok, state}
+      {:noreply, state}
+    else
+      error -> {:stop, error, %{}}
+    end
   end
+
+  defp connection_pid(connection_name, retries \\ 5)
+
+  defp connection_pid(_connection_name, 0), do: {:error, :not_found}
+
+  defp connection_pid(connection_name, _retries) when is_pid(connection_name),
+    do: {:ok, connection_name}
+
+  defp connection_pid(connection_name, retries) do
+    case Process.whereis(connection_name) do
+      nil ->
+        Process.sleep(500)
+        connection_pid(connection_name, retries - 1)
+
+      pid ->
+        {:ok, pid}
+    end
+  end
+
+  defp create_stream(_conn, stream) when is_binary(stream), do: {:ok, stream}
+  defp create_stream(conn, stream), do: Jetstream.API.Stream.create(conn, stream)
+
+  defp create_consumer(_conn, consumer) when is_binary(consumer), do: {:ok, consumer}
+  defp create_consumer(conn, consumer), do: Jetstream.API.Consumer.create(conn, consumer)
+
+  defp stream_name(stream) when is_binary(stream), do: stream
+  defp stream_name(stream), do: stream.name
+
+  defp consumer_name(consumer) when is_binary(consumer), do: consumer
+  defp consumer_name(consumer), do: consumer.name
 
   def handle_info({:msg, message}, state) do
     case state.module.handle_message(message) do

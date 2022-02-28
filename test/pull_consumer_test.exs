@@ -104,5 +104,21 @@ defmodule Jetstream.PullConsumerTest do
         Consumer.delete(conn, stream_name, consumer_name)
       end
     end
+
+    test "fails for non-existing stream and consumer", %{conn: conn} do
+      ref =
+        start_supervised!(
+          {ExamplePullConsumer,
+           %{
+             connection_name: conn,
+             stream: "wrong_stream",
+             consumer: %Consumer{stream_name: "wrong_stream", name: "consumer"}
+           }}
+        )
+        |> Process.monitor()
+
+      assert_receive {:DOWN, ^ref, :process, _,
+                      {:error, %{"code" => 404, "description" => "stream not found"}}}
+    end
   end
 end
