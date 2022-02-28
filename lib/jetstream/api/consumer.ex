@@ -240,11 +240,14 @@ defmodule Jetstream.API.Consumer do
 
   ## Examples
 
-      iex> create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
-      {:ok, %{name: "consumer", stream_name: "stream", created: ~U[2022-02-23 14:21:42.876321Z]}}
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> {:ok, _response} = Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, %{name: "consumer", stream_name: "stream"}} = Jetstream.API.Consumer.create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
 
-      iex> create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream", deliver_policy: :by_start_sequence})
-      {:error, %{"code" => 400, "description" => "consumer delivery policy is deliver by start sequence, but optional start sequence is not set"}}
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> {:ok, _response} = Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> Jetstream.API.Consumer.create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream", deliver_policy: :by_start_sequence})
+      {:error, %{"code" => 500, "description" => "consumer delivery policy is deliver by start sequence, but optional start sequence is not set"}}
 
   """
   @spec create(conn :: Gnat.t(), consumer :: t()) :: {:ok, info()} | {:error, term()}
@@ -269,10 +272,14 @@ defmodule Jetstream.API.Consumer do
 
   ## Examples
 
-      iex> delete(gnat, "stream", "consumer")
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> {:ok, _response} = Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, _response} = Jetstream.API.Consumer.create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
+      iex> Jetstream.API.Consumer.delete(gnat, "stream", "consumer")
       :ok
 
-      iex> delete(gnat, "wrong_stream", "consumer")
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> Jetstream.API.Consumer.delete(gnat, "wrong_stream", "consumer")
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
@@ -291,11 +298,13 @@ defmodule Jetstream.API.Consumer do
 
   ## Examples
 
-      iex> info(gnat, "stream", "consumer")
-      {:ok, %{ack_floor: %{}, cluster: %{}, config: %{}, created: ~U[2022-02-23 14:21:42.876321Z], delivered: %{},
-      num_ack_pending: 0, num_pending: 0, num_redelivered: 0, num_waiting: 0, push_bound: nil}}
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> {:ok, _response} = Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, _response} = Jetstream.API.Consumer.create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
+      iex> {:ok, %{created: _}} = Jetstream.API.Consumer.info(gnat, "stream", "consumer")
 
-      iex> info(gnat, "wrong_stream", "consumer")
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> Jetstream.API.Consumer.info(gnat, "wrong_stream", "consumer")
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
@@ -314,13 +323,12 @@ defmodule Jetstream.API.Consumer do
 
   ## Examples
 
-      iex> list(gnat, "stream")
-      {:ok, %{total: 2, offset: 0, limit: 1024, consumers: ["consumer1, consumer2"]}}
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> {:ok, _response} =  Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, %{consumers: _, limit: 1024, offset: 0, total: _}} = Jetstream.API.Consumer.list(gnat, "stream")
 
-      iex> list(gnat, "stream2", offset: 10)
-      {:ok, %{total: 12, offset: 10, limit: 1024, consumers: ["cosumer11", "consumer12"]}}
-
-      iex> list(gnat, "wrong_stream")
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> Jetstream.API.Consumer.list(gnat, "wrong_stream")
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """

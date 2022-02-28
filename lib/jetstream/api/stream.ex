@@ -234,8 +234,8 @@ defmodule Jetstream.API.Stream do
 
   ## Examples
 
-      iex> create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
-      {:ok, %{created: ~U[2022-02-23 14:21:42.876321Z]}}
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> {:ok, %{created: _}} = Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
 
   """
   @spec create(conn :: Gnat.t(), stream :: t()) :: {:ok, info()} | {:error, any()}
@@ -252,10 +252,13 @@ defmodule Jetstream.API.Stream do
 
   ## Examples
 
-      iex> delete(gnat, "stream)
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> Jetstream.API.Stream.delete(gnat, "stream")
       :ok
 
-      iex> delete(gnat, "wrong_stream")
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> Jetstream.API.Stream.delete(gnat, "wrong_stream")
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
@@ -271,10 +274,12 @@ defmodule Jetstream.API.Stream do
 
   ## Examples
 
-      iex> info(gnat, "stream")
-      {:ok, %{cluster: nil, config: %{}, created: ~U[2022-02-23 14:21:42.876321Z], mirror: nil, sources: nil, state: %{}}}
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, %{created: _}} = Jetstream.API.Stream.info(gnat, "stream")
 
-      iex> info(gnat, "wrong_stream")
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> Jetstream.API.Stream.info(gnat, "wrong_stream")
       {:error, %{"code" => 404, "description" => "stream not found"}}
 
   """
@@ -291,11 +296,8 @@ defmodule Jetstream.API.Stream do
 
   ## Examples
 
-      iex> list(gnat)
-      {:ok, %{total: 2, offset: 0, limit: 1024, streams: ["stream1", "stream2"]}}
-
-      iex> list(gnat, offset: 10)
-      {:ok, %{total: 12, offset: 10, limit: 1024, streams: ["stream11", "stream12"]}}
+      iex> gnat = start_supervised!({Gnat, %{}})
+      iex> {:ok, %{total: _, offset: 0, limit: 1024, streams: _}} = Jetstream.API.Stream.list(gnat)
 
   """
   @spec list(conn :: Gnat.t(), params :: [offset: non_neg_integer()]) ::
