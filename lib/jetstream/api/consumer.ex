@@ -246,8 +246,7 @@ defmodule Jetstream.API.Consumer do
 
       iex> gnat = start_supervised!({Gnat, %{}})
       iex> {:ok, _response} = Jetstream.API.Stream.create(gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
-      iex> Jetstream.API.Consumer.create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream", deliver_policy: :by_start_sequence})
-      {:error, %{"code" => 500, "description" => "consumer delivery policy is deliver by start sequence, but optional start sequence is not set"}}
+      iex> {:error, %{"description" => "consumer delivery policy is deliver by start sequence, but optional start sequence is not set"}} = Jetstream.API.Consumer.create(gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream", deliver_policy: :by_start_sequence})
 
   """
   @spec create(conn :: Gnat.t(), consumer :: t()) :: {:ok, info()} | {:error, term()}
@@ -279,8 +278,7 @@ defmodule Jetstream.API.Consumer do
       :ok
 
       iex> gnat = start_supervised!({Gnat, %{}})
-      iex> Jetstream.API.Consumer.delete(gnat, "wrong_stream", "consumer")
-      {:error, %{"code" => 404, "description" => "stream not found"}}
+      iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.delete(gnat, "wrong_stream", "consumer")
 
   """
   @spec delete(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary()) ::
@@ -304,8 +302,7 @@ defmodule Jetstream.API.Consumer do
       iex> {:ok, %{created: _}} = Jetstream.API.Consumer.info(gnat, "stream", "consumer")
 
       iex> gnat = start_supervised!({Gnat, %{}})
-      iex> Jetstream.API.Consumer.info(gnat, "wrong_stream", "consumer")
-      {:error, %{"code" => 404, "description" => "stream not found"}}
+      iex>  {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.info(gnat, "wrong_stream", "consumer")
 
   """
   @spec info(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary()) ::
@@ -328,8 +325,7 @@ defmodule Jetstream.API.Consumer do
       iex> {:ok, %{consumers: _, limit: 1024, offset: 0, total: _}} = Jetstream.API.Consumer.list(gnat, "stream")
 
       iex> gnat = start_supervised!({Gnat, %{}})
-      iex> Jetstream.API.Consumer.list(gnat, "wrong_stream")
-      {:error, %{"code" => 404, "description" => "stream not found"}}
+      iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.list(gnat, "wrong_stream")
 
   """
   @spec list(conn :: Gnat.t(), stream_name :: binary(), params :: [offset: non_neg_integer()]) ::
