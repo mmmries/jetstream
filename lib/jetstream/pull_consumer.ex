@@ -56,6 +56,21 @@ defmodule Jetstream.PullConsumer do
     consumer: "TEST_CONSUMER"
   }
   ```
+
+  To receive acknowledgements, listen to the `$JS.ACK.<stream>.<consumer>.>` subject:
+
+  ```
+  Gnat.sub(:gnat, self(), "$JS.ACK.TEST_STREAM.TEST.CONSUMER.>")
+
+  receive do
+    {:msg, %{body: "+NXT"}} ->
+      # Perform some actions
+      :ok
+
+    _ ->
+      :error
+  end
+  ```
   """
 
   use GenServer
