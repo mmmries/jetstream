@@ -258,8 +258,7 @@ defmodule Jetstream.API.Stream do
       :ok
 
       iex> gnat = start_supervised!({Gnat, %{}})
-      iex> Jetstream.API.Stream.delete(gnat, "wrong_stream")
-      {:error, %{"code" => 404, "description" => "stream not found"}}
+      iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Stream.delete(gnat, "wrong_stream")
 
   """
   @spec delete(conn :: Gnat.t(), stream_name :: binary()) :: :ok | {:error, any()}
@@ -279,8 +278,7 @@ defmodule Jetstream.API.Stream do
       iex> {:ok, %{created: _}} = Jetstream.API.Stream.info(gnat, "stream")
 
       iex> gnat = start_supervised!({Gnat, %{}})
-      iex> Jetstream.API.Stream.info(gnat, "wrong_stream")
-      {:error, %{"code" => 404, "description" => "stream not found"}}
+      iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Stream.info(gnat, "wrong_stream")
 
   """
   @spec info(conn :: Gnat.t(), stream_name :: binary()) ::
