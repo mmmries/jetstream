@@ -56,21 +56,6 @@ defmodule Jetstream.PullConsumer do
     consumer: "TEST_CONSUMER"
   }
   ```
-
-  To receive acknowledgements, listen to the `$JS.ACK.<stream>.<consumer>.>` subject:
-
-  ```
-  Gnat.sub(:gnat, self(), "$JS.ACK.TEST_STREAM.TEST.CONSUMER.>")
-
-  receive do
-    {:msg, %{body: "+NXT"}} ->
-      # Perform some actions
-      :ok
-
-    _ ->
-      :error
-  end
-  ```
   """
 
   use GenServer
@@ -88,8 +73,6 @@ defmodule Jetstream.PullConsumer do
     message, NAK'd message will be retried.
 
   * `:noreply` - nothing is sent.
-
-  The client should be listening for acknowledgements on the `$JS.ACK.<stream>.<consumer>.>` subject.
   """
   @callback handle_message(message :: Jetstream.message()) ::
               :ack | :nack | :noreply
