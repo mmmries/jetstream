@@ -29,18 +29,18 @@ defmodule ExamplePullConsumer do
     use Jetstream.PullConsumer
 
     def handle_message(_message) do
+      IO.inspect(message)
       :ack
     end
   end
 
 Enum.each(1..10, fn(_) ->
-  GenServer.start_link(
-    Jetstream.PullConsumer,
+  Jetstream.PullConsumer.start_link(
+    ExamplePullConsumer,
     %{
       connection_name: :gnat,
       stream: "TEST",
-      consumer: "TEST",
-      module: ExamplePullConsumer
+      consumer: "TEST"
     }
   )
 end)

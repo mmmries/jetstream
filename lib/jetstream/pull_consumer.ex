@@ -80,8 +80,7 @@ defmodule Jetstream.PullConsumer do
   @type settings :: %{
           connection_name: pid() | atom(),
           stream_name: binary() | Jetstream.API.Stream.t(),
-          consumer_name: binary() | Jetstream.API.Consumer.t(),
-          module: atom()
+          consumer_name: binary() | Jetstream.API.Consumer.t()
         }
 
   defmacro __using__(_opts) do
@@ -98,20 +97,36 @@ defmodule Jetstream.PullConsumer do
                 stream: binary() | Jetstream.API.Stream.t(),
                 consumer: binary() | Jetstream.API.Consumer.t()
               }
-            ) :: Jetstream.PullConsumer.settings()
+            ) :: Supervisor.child_spec()
       def child_spec(init_arg) do
-        init_arg
-        |> Map.put(:module, __MODULE__)
-        |> Jetstream.PullConsumer.child_spec()
+        Jetstream.PullConsumer.child_spec(__MODULE__, init_arg)
       end
 
       defoverridable child_spec: 1
     end
   end
 
-  @spec start_link(settings(), GenServer.options()) :: GenServer.on_start()
-  def start_link(settings, options \\ []) do
+  @spec start_link(module :: module(), settings :: settings(), options :: GenServer.options()) ::
+          GenServer.on_start()
+  def start_link(module, settings, options \\ []) do
+    settings =
+      settings
+      |> Map.put(:module, module)
+
     GenServer.start_link(__MODULE__, settings, options)
+  end
+
+  @spec child_spec(module :: module(), init_arg :: settings()) :: Supervisor.child_spec()
+  def child_spec(module, init_arg) do
+    %{
+      id: __MODULE__,
+      start:
+        {__MODULE__, :start_link,
+         [
+           module,
+           init_arg
+         ]}
+    }
   end
 
   def init(arg) do
@@ -161,6 +176,8 @@ defmodule Jetstream.PullConsumer do
   defp connection_pid(connection_name, retries) do
     case Process.whereis(connection_name) do
       nil ->
+        # WORKAROUND: Gnat connection is not started immediately with Connection Supervisor.
+        # This is a temporary hack.
         Process.sleep(500)
         connection_pid(connection_name, retries - 1)
 
