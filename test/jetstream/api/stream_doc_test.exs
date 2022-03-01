@@ -1,4 +1,4 @@
 defmodule Jetstream.API.StreamDocTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
   doctest Jetstream.API.Stream
 end
