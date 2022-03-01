@@ -95,7 +95,12 @@ defmodule Jetstream.PullConsumerTest do
         end
 
         if consumer_variant == :non_existing do
-          {:ok, _} = Gnat.sub(conn, self(), "$JS.API.CONSUMER.DURABLE.CREATE.#{stream_name}.#{consumer_name}")
+          {:ok, _} =
+            Gnat.sub(
+              conn,
+              self(),
+              "$JS.API.CONSUMER.DURABLE.CREATE.#{stream_name}.#{consumer_name}"
+            )
         end
 
         start_supervised!(
