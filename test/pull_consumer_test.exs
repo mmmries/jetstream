@@ -59,7 +59,7 @@ defmodule Jetstream.PullConsumerTest do
             {:ok, _response} = Stream.create(conn, stream)
             stream_name
           else
-            %Stream{name: stream_name, subjects: stream_subjects}
+            %{name: stream_name, subjects: stream_subjects}
           end
 
         consumer =
@@ -68,7 +68,7 @@ defmodule Jetstream.PullConsumerTest do
             {:ok, _response} = Consumer.create(conn, consumer)
             consumer_name
           else
-            %Consumer{stream_name: stream_name, durable_name: consumer_name}
+            %{stream_name: stream_name, durable_name: consumer_name}
           end
 
         start_supervised!(
@@ -119,7 +119,7 @@ defmodule Jetstream.PullConsumerTest do
            %{
              connection_name: conn,
              stream: "wrong_stream",
-             consumer: %Consumer{stream_name: "wrong_stream", durable_name: "consumer"}
+             consumer: %{stream_name: "wrong_stream", durable_name: "consumer"}
            }}
         )
         |> Process.monitor()

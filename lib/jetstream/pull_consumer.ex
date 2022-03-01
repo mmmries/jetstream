@@ -79,8 +79,66 @@ defmodule Jetstream.PullConsumer do
 
   @type settings :: %{
           connection_name: pid() | atom(),
-          stream_name: binary() | Jetstream.API.Stream.t(),
-          consumer_name: binary() | Jetstream.API.Consumer.t()
+          stream: binary() | stream_settings(),
+          consumer: binary() | consumer_settings()
+        }
+
+  @type nanoseconds :: non_neg_integer()
+
+  @type stream_settings :: %{
+          :name => binary(),
+          optional(:allow_rollup_hdrs) => boolean(),
+          optional(:deny_delete) => boolean(),
+          optional(:deny_purge) => boolean(),
+          optional(:description) => binary(),
+          optional(:discard) => :old | :new,
+          optional(:duplicate_window) => nanoseconds(),
+          optional(:max_age) => nanoseconds(),
+          optional(:max_bytes) => integer(),
+          optional(:max_consumers) => integer(),
+          optional(:max_msg_size) => integer(),
+          optional(:max_msgs) => integer(),
+          optional(:mirror) => Stream.source(),
+          optional(:no_ack) => boolean(),
+          optional(:num_replicas) => pos_integer(),
+          optional(:placement) => %{
+            :cluster => binary(),
+            optional(:tags) => list(binary())
+          },
+          optional(:retention) => :limits | :workqueue | :interest,
+          optional(:sealed) => boolean(),
+          optional(:sources) => list(Stream.source()),
+          optional(:storage) => :file | :memory,
+          optional(:subjects) => list(binary()),
+          optional(:template_owner) => binary()
+        }
+
+  @type consumer_settings :: %{
+          :durable_name => nil | binary(),
+          :stream_name => binary(),
+          optional(:ack_policy) => :none | :all | :explicit,
+          optional(:ack_wait) => non_neg_integer(),
+          optional(:backoff) => [non_neg_integer()],
+          optional(:deliver_group) => binary(),
+          optional(:deliver_policy) =>
+            :all | :last | :new | :by_start_sequence | :by_start_time | :last_per_subject,
+          optional(:deliver_subject) => binary(),
+          optional(:description) => binary(),
+          optional(:filter_subject) => binary(),
+          optional(:flow_control) => boolean(),
+          optional(:headers_only) => boolean(),
+          optional(:idle_heartbeat) => non_neg_integer(),
+          optional(:inactive_threshold) => non_neg_integer(),
+          optional(:max_ack_pending) => integer(),
+          optional(:max_batch) => integer(),
+          optional(:max_deliver) => integer(),
+          optional(:max_expires) => non_neg_integer(),
+          optional(:max_waiting) => integer(),
+          optional(:opt_start_seq) => non_neg_integer(),
+          optional(:opt_start_time) => DateTime.t(),
+          optional(:rate_limit_bps) => non_neg_integer(),
+          optional(:replay_policy) => :instant | :original,
+          optional(:sample_freq) => binary()
         }
 
   defmacro __using__(_opts) do
@@ -190,10 +248,28 @@ defmodule Jetstream.PullConsumer do
   end
 
   defp create_stream(_conn, stream) when is_binary(stream), do: {:ok, stream}
-  defp create_stream(conn, stream), do: Jetstream.API.Stream.create(conn, stream)
+
+  defp create_stream(conn, stream) do
+    try do
+      struct!(Jetstream.API.Stream, stream)
+    rescue
+      _ -> {:error, :invalid_stream_settings}
+    else
+      stream -> Jetstream.API.Stream.create(conn, stream)
+    end
+  end
 
   defp create_consumer(_conn, consumer) when is_binary(consumer), do: {:ok, consumer}
-  defp create_consumer(conn, consumer), do: Jetstream.API.Consumer.create(conn, consumer)
+
+  defp create_consumer(conn, consumer) do
+    try do
+      struct!(Jetstream.API.Consumer, consumer)
+    rescue
+      _ -> {:error, :invalid_consumer_settings}
+    else
+      consumer -> Jetstream.API.Consumer.create(conn, consumer)
+    end
+  end
 
   defp stream_name(stream) when is_binary(stream), do: stream
   defp stream_name(stream), do: stream.name
