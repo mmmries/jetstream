@@ -26,4 +26,11 @@ defmodule Jetstream.API.Util do
   def to_sym(str) when is_binary(str) do
     String.to_existing_atom(str)
   end
+
+  def put_if_exist(target_map, target_key, source_map, source_key) do
+    case Map.fetch(source_map, source_key) do
+      {:ok, value} -> Map.put(target_map, target_key, value)
+      _ -> target_map
+    end
+  end
 end
