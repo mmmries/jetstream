@@ -10,8 +10,11 @@ defmodule Jetstream.PullConsumerTest do
       :ack
     end
 
-    def handle_message(%{topic: "non-ackable"}) do
-      :nack
+    def handle_message(%{topic: "non-ackable", reply_to: reply_to}) do
+      [_, _, _, _, delivered_count, _, _, _, _] = String.split(reply_to, ".")
+
+      # NACK on first delivery
+      if delivered_count == "1", do: :nack, else: :ack
     end
 
     def handle_message(%{topic: "skippable"}) do
@@ -37,7 +40,8 @@ defmodule Jetstream.PullConsumerTest do
 
     for stream_variant <- [:existing, :non_existing],
         consumer_variant <- [:existing, :non_existing],
-        !(stream_variant == :non_existing && consumer_variant == :existing) do
+        !(stream_variant == :non_existing && consumer_variant == :existing),
+        stream_variant == :non_existing && consumer_variant == :non_existing do
       @tag stream_variant: stream_variant
       @tag consumer_variant: consumer_variant
       test "consumes JetStream messages (stream #{stream_variant}, consumer #{consumer_variant})",
@@ -92,6 +96,9 @@ defmodule Jetstream.PullConsumerTest do
 
         assert_receive {:msg, %{body: "-NAK", topic: topic}}
         assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1.3.3.")
+
+        assert_receive {:msg, %{body: "+NXT", topic: topic}}
+        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.2.3.4.")
 
         :ok = Gnat.pub(conn, "skippable", "hello")
 

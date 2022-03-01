@@ -144,13 +144,7 @@ defmodule Jetstream.PullConsumer do
          {:ok, _response} <- create_consumer(conn, consumer),
          listening_topic = "_CON.#{nuid()}",
          {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
-         :ok <-
-           Gnat.pub(
-             conn,
-             "$JS.API.CONSUMER.MSG.NEXT.#{stream_name(stream)}.#{consumer_name(consumer)}",
-             "1",
-             reply_to: listening_topic
-           ) do
+         :ok <- next_message(conn, stream_name(stream), consumer_name(consumer), listening_topic) do
       Process.link(conn)
 
       state = %{
@@ -186,6 +180,15 @@ defmodule Jetstream.PullConsumer do
     end
   end
 
+  defp next_message(conn, stream_name, consumer_name, listening_topic) do
+    Gnat.pub(
+      conn,
+      "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
+      "1",
+      reply_to: listening_topic
+    )
+  end
+
   defp create_stream(_conn, stream) when is_binary(stream), do: {:ok, stream}
   defp create_stream(conn, stream), do: Jetstream.API.Stream.create(conn, stream)
 
@@ -200,9 +203,15 @@ defmodule Jetstream.PullConsumer do
 
   def handle_info({:msg, message}, state) do
     case state.module.handle_message(message) do
-      :ack -> Jetstream.ack_next(message, state.listening_topic)
-      :nack -> Jetstream.nack(message)
-      :noreply -> nil
+      :ack ->
+        Jetstream.ack_next(message, state.listening_topic)
+
+      :nack ->
+        Jetstream.nack(message)
+        next_message(message.gnat, state.stream_name, state.consumer_name, state.listening_topic)
+
+      :noreply ->
+        next_message(message.gnat, state.stream_name, state.consumer_name, state.listening_topic)
     end
 
     {:noreply, state}
