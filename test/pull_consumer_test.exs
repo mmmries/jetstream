@@ -56,8 +56,6 @@ defmodule Jetstream.PullConsumerTest do
       :ok = Gnat.pub(conn, "skippable", "hello")
 
       refute_receive {:msg, _}
-
-      Consumer.delete(conn, stream_name, consumer_name)
     end
 
     for stream_variant <- [:existing, :non_existing],
@@ -92,6 +90,14 @@ defmodule Jetstream.PullConsumerTest do
             %{stream_name: stream_name, durable_name: consumer_name}
           end
 
+        if stream_variant == :non_existing do
+          {:ok, _} = Gnat.sub(conn, self(), "$JS.API.STREAM.CREATE.#{stream_name}")
+        end
+
+        if consumer_variant == :non_existing do
+          {:ok, _} = Gnat.sub(conn, self(), "$JS.API.CONSUMER.DURABLE.CREATE.#{stream_name}.#{consumer_name}")
+        end
+
         start_supervised!(
           {ExamplePullConsumer,
            %{
@@ -100,6 +106,14 @@ defmodule Jetstream.PullConsumerTest do
              consumer: consumer
            }}
         )
+
+        if stream_variant == :non_existing do
+          assert_receive {:msg, %{topic: "$JS.API.STREAM.CREATE." <> _}}
+        end
+
+        if consumer_variant == :non_existing do
+          assert_receive {:msg, %{topic: "$JS.API.CONSUMER.DURABLE.CREATE." <> _}}
+        end
 
         Gnat.sub(conn, self(), "$JS.ACK.#{stream_name}.#{consumer_name}.>")
 
@@ -125,8 +139,6 @@ defmodule Jetstream.PullConsumerTest do
 
         assert_receive {:msg, %{body: "+NXT", topic: topic}}
         assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
-
-        Consumer.delete(conn, stream_name, consumer_name)
       end
     end
 
