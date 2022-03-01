@@ -38,6 +38,26 @@ defmodule Jetstream.PullConsumerTest do
       }
     end
 
+    test "ignores messages with :noreply", %{
+      conn: conn,
+      stream_name: stream_name,
+      stream_subjects: stream_subjects,
+      consumer_name: consumer_name
+    } do
+      start_supervised!(
+        {ExamplePullConsumer,
+         %{
+           connection_name: conn,
+           stream: %{name: stream_name, subjects: stream_subjects},
+           consumer: %{stream_name: stream_name, durable_name: consumer_name}
+         }}
+      )
+
+      :ok = Gnat.pub(conn, "skippable", "hello")
+
+      refute_receive {:msg, _}
+    end
+
     for stream_variant <- [:existing, :non_existing],
         consumer_variant <- [:existing, :non_existing],
         !(stream_variant == :non_existing && consumer_variant == :existing) do
