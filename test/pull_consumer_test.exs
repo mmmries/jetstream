@@ -121,6 +121,11 @@ defmodule Jetstream.PullConsumerTest do
         assert_receive {:msg, %{body: "+NXT", topic: topic}}
         assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.2")
 
+        :ok = Gnat.pub(conn, "ackable", "hello")
+
+        assert_receive {:msg, %{body: "+NXT", topic: topic}}
+        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
+
         Consumer.delete(conn, stream_name, consumer_name)
       end
     end
