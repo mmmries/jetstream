@@ -40,8 +40,7 @@ defmodule Jetstream.PullConsumerTest do
 
     for stream_variant <- [:existing, :non_existing],
         consumer_variant <- [:existing, :non_existing],
-        !(stream_variant == :non_existing && consumer_variant == :existing),
-        stream_variant == :non_existing && consumer_variant == :non_existing do
+        !(stream_variant == :non_existing && consumer_variant == :existing) do
       @tag stream_variant: stream_variant
       @tag consumer_variant: consumer_variant
       test "consumes JetStream messages (stream #{stream_variant}, consumer #{consumer_variant})",
@@ -85,28 +84,20 @@ defmodule Jetstream.PullConsumerTest do
         :ok = Gnat.pub(conn, "ackable", "hello")
 
         assert_receive {:msg, %{body: "+NXT", topic: topic}}
-        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1.1.1.")
+        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
 
         :ok = Gnat.pub(conn, "ackable", "hello")
 
         assert_receive {:msg, %{body: "+NXT", topic: topic}}
-        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1.2.2.")
+        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
 
         :ok = Gnat.pub(conn, "non-ackable", "hello")
 
         assert_receive {:msg, %{body: "-NAK", topic: topic}}
-        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1.3.3.")
+        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
 
         assert_receive {:msg, %{body: "+NXT", topic: topic}}
-        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.2.3.4.")
-
-        :ok = Gnat.pub(conn, "skippable", "hello")
-
-        refute_receive {:msg, _}
-
-        :ok = Gnat.pub(conn, "other", "hello")
-
-        refute_receive {:msg, _}
+        assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.2")
 
         Consumer.delete(conn, stream_name, consumer_name)
       end
