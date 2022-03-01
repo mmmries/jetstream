@@ -56,6 +56,8 @@ defmodule Jetstream.PullConsumerTest do
       :ok = Gnat.pub(conn, "skippable", "hello")
 
       refute_receive {:msg, _}
+
+      Consumer.delete(conn, stream_name, consumer_name)
     end
 
     for stream_variant <- [:existing, :non_existing],
