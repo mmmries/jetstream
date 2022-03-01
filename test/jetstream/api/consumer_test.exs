@@ -16,7 +16,7 @@ defmodule Jetstream.API.ConsumerTest do
              consumers: []
            }
 
-    consumer = %Consumer{stream_name: "STREAM1", name: "STREAM1"}
+    consumer = %Consumer{stream_name: "STREAM1", durable_name: "STREAM1"}
     assert {:ok, consumer_response} = Consumer.create(conn, consumer)
 
     assert consumer_response.ack_floor == %{
@@ -40,7 +40,21 @@ defmodule Jetstream.API.ConsumerTest do
              filter_subject: nil,
              opt_start_seq: nil,
              opt_start_time: nil,
-             replay_policy: :instant
+             replay_policy: :instant,
+             backoff: nil,
+             deliver_group: nil,
+             description: nil,
+             flow_control: nil,
+             headers_only: nil,
+             idle_heartbeat: nil,
+             inactive_threshold: nil,
+             max_ack_panding: 20000,
+             max_batch: nil,
+             max_deliver: -1,
+             max_expires: nil,
+             max_waiting: 512,
+             rate_limit_bps: nil,
+             sample_freq: nil
            }
 
     assert consumer_response.num_pending == 0
@@ -67,7 +81,7 @@ defmodule Jetstream.API.ConsumerTest do
   end
 
   test "failed creates" do
-    consumer = %Consumer{name: "STREAM2", stream_name: "STREAM2"}
+    consumer = %Consumer{durable_name: "STREAM2", stream_name: "STREAM2"}
 
     assert {:error, %{"code" => 404, "description" => "stream not found"}} =
              Consumer.create(gnat(), consumer)
@@ -85,7 +99,7 @@ defmodule Jetstream.API.ConsumerTest do
 
     consumer = %Consumer{
       stream_name: "STREAM4",
-      name: "STREAM4",
+      durable_name: "STREAM4",
       deliver_subject: "consumer.STREAM4"
     }
 
@@ -114,7 +128,21 @@ defmodule Jetstream.API.ConsumerTest do
              filter_subject: nil,
              opt_start_seq: nil,
              opt_start_time: nil,
-             replay_policy: :instant
+             replay_policy: :instant,
+             backoff: nil,
+             deliver_group: nil,
+             description: nil,
+             flow_control: nil,
+             headers_only: nil,
+             idle_heartbeat: nil,
+             inactive_threshold: nil,
+             max_ack_panding: 20000,
+             max_batch: nil,
+             max_deliver: -1,
+             max_expires: nil,
+             max_waiting: nil,
+             rate_limit_bps: nil,
+             sample_freq: nil
            }
 
     assert consumer_response.num_pending == 0

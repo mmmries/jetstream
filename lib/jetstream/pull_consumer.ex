@@ -196,7 +196,7 @@ defmodule Jetstream.PullConsumer do
   defp stream_name(stream), do: stream.name
 
   defp consumer_name(consumer) when is_binary(consumer), do: consumer
-  defp consumer_name(consumer), do: consumer.name
+  defp consumer_name(consumer), do: consumer.durable_name
 
   def handle_info({:msg, message}, state) do
     case state.module.handle_message(message) do
