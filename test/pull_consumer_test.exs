@@ -52,8 +52,8 @@ defmodule Jetstream.PullConsumerTest do
         {ExamplePullConsumer,
          %{
            connection_name: conn,
-           stream: stream_name,
-           consumer: consumer_name
+           stream_name: stream_name,
+           consumer_name: consumer_name
          }}
       )
 
@@ -72,8 +72,8 @@ defmodule Jetstream.PullConsumerTest do
         {ExamplePullConsumer,
          %{
            connection_name: conn,
-           stream: stream_name,
-           consumer: consumer_name
+           stream_name: stream_name,
+           consumer_name: consumer_name
          }}
       )
 
