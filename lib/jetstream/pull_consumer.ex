@@ -123,11 +123,13 @@ defmodule Jetstream.PullConsumer do
   end
 
   def init(arg) do
+    Process.flag(:trap_exit, true)
+
     {:connect, :init, arg}
   end
 
   def connect(
-        :init,
+        _,
         %{
           settings: %{
             connection_name: connection_name,
@@ -146,7 +148,8 @@ defmodule Jetstream.PullConsumer do
         settings: %{
           stream_name: stream_name,
           consumer_name: consumer_name,
-          listening_topic: listening_topic
+          listening_topic: listening_topic,
+          connection_name: connection_name
         },
         module: module
       }
@@ -157,7 +160,30 @@ defmodule Jetstream.PullConsumer do
     end
   end
 
-  defp connection_pid(connection_name) when is_pid(connection_name), do: {:ok, connection_name}
+  def connect(
+        _,
+        %{
+          settings: %{
+            stream_name: stream_name,
+            consumer_name: consumer_name,
+            listening_topic: listening_topic,
+            connection_name: connection_name
+          }
+        } = state
+      ) do
+    with {:ok, conn} <- connection_pid(connection_name),
+         Process.link(conn),
+         {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
+         :ok <- next_message(conn, stream_name, consumer_name, listening_topic) do
+      {:ok, state}
+    else
+      _ -> {:backoff, 1_000, state}
+    end
+  end
+
+  defp connection_pid(connection_name) when is_pid(connection_name) do
+    if Process.alive?(connection_name), do: {:ok, connection_name}, else: {:error, :not_alive}
+  end
 
   defp connection_pid(connection_name) do
     case Process.whereis(connection_name) do
@@ -203,6 +229,10 @@ defmodule Jetstream.PullConsumer do
     end
 
     {:noreply, state}
+  end
+
+  def handle_info({:EXIT, _pid, _reason}, state) do
+    {:connect, :reconnect, state}
   end
 
   def handle_info(other, state) do
