@@ -63,6 +63,9 @@ defmodule Jetstream.PullConsumer do
 
   * `:noreply` - nothing is sent.
   """
+
+  use Connection
+
   @callback handle_message(message :: Jetstream.message()) ::
               :ack | :nack | :noreply
 
@@ -103,7 +106,7 @@ defmodule Jetstream.PullConsumer do
       module: module
     }
 
-    GenServer.start_link(__MODULE__, settings, options)
+    Connection.start_link(__MODULE__, settings, options)
   end
 
   @spec child_spec(module :: module(), init_arg :: settings()) :: Supervisor.child_spec()
@@ -120,19 +123,22 @@ defmodule Jetstream.PullConsumer do
   end
 
   def init(arg) do
-    {:ok, arg, {:continue, :connect}}
+    {:connect, :init, arg}
   end
 
-  def handle_continue(:connect, %{
-        settings: %{
-          connection_name: connection_name,
-          stream: stream,
-          consumer: consumer
-        },
-        module: module
-      }) do
+  def connect(
+        :init,
+        %{
+          settings: %{
+            connection_name: connection_name,
+            stream: stream,
+            consumer: consumer
+          },
+          module: module
+        } = settings
+      ) do
     with {:ok, conn} <- connection_pid(connection_name),
-         true <- Process.link(conn),
+         Process.link(conn),
          listening_topic = "_CON.#{nuid()}",
          {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
          :ok <- next_message(conn, stream_name(stream), consumer_name(consumer), listening_topic) do
@@ -140,31 +146,24 @@ defmodule Jetstream.PullConsumer do
         settings: %{
           stream_name: stream,
           consumer_name: consumer,
-          listening_topic: listening_topic
+          listening_topic: listening_topic,
+          connection_name: connection_name
         },
         module: module
       }
 
-      {:noreply, state}
+      {:ok, state}
     else
-      error -> {:stop, error, %{}}
+      _ -> {:backoff, 1_000, settings}
     end
   end
 
-  defp connection_pid(connection_name, retries \\ 5)
+  defp connection_pid(connection_name) when is_pid(connection_name), do: {:ok, connection_name}
 
-  defp connection_pid(_connection_name, 0), do: {:error, :not_found}
-
-  defp connection_pid(connection_name, _retries) when is_pid(connection_name),
-    do: {:ok, connection_name}
-
-  defp connection_pid(connection_name, retries) do
+  defp connection_pid(connection_name) do
     case Process.whereis(connection_name) do
       nil ->
-        # WORKAROUND: Gnat connection is not started immediately with Connection Supervisor.
-        # This is a temporary hack.
-        Process.sleep(500)
-        connection_pid(connection_name, retries - 1)
+        {:error, :not_found}
 
       pid ->
         {:ok, pid}
