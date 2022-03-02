@@ -35,11 +35,17 @@ defmodule Jetstream.MixProject do
   defp package do
     [
       description: "A Jetstream client in pure Elixir.",
-      licenses: ["MIT"],
+      licenses: ["Apache-2.0"],
       links: %{
-        "Github" => "https://github.com/mmmries/jetstream"
+        "GitHub" => "https://github.com/mmmries/jetstream"
       },
-      maintainers: ["Michael Ries"]
+      maintainers: [
+        "Michael Ries",
+        "Benjamin Yu",
+        "Marek Kaput",
+        "Szymon Świerk",
+        "Mariusz Morawski"
+      ]
     ]
   end
 end
