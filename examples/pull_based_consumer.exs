@@ -25,14 +25,20 @@ Enum.each(1..100, fn(i) -> Gnat.pub(connection, "greetings", "hello #{i}") end)
   ]
 })
 
-# TODO replace this with something that monitors the connection
-pid = Process.whereis(:gnat)
+defmodule ExamplePullConsumer do
+    use Jetstream.PullConsumer
+
+    def handle_message(_message) do
+      IO.inspect(message)
+      :ack
+    end
+  end
 
 Enum.each(1..10, fn(_) ->
-  GenServer.start_link(
-    Jetstream.PullConsumer,
+  Jetstream.PullConsumer.start_link(
+    ExamplePullConsumer,
     %{
-      connection_pid: pid,
+      connection_name: :gnat,
       stream_name: "TEST",
       consumer_name: "TEST"
     }
