@@ -39,8 +39,8 @@ Enum.each(1..10, fn(_) ->
     ExamplePullConsumer,
     %{
       connection_name: :gnat,
-      stream: "TEST",
-      consumer: "TEST"
+      stream_name: "TEST",
+      consumer_name: "TEST"
     }
   )
 end)

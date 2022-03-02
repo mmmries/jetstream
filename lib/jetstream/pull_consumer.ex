@@ -36,8 +36,8 @@ defmodule Jetstream.PullConsumer do
         {MyApp.PullConsumer,
           %{
             connection_name: :gnat,
-            stream: "TEST_STREAM",
-            consumer: "TEST_CONSUMER"
+            stream_name: "TEST_STREAM",
+            consumer_name: "TEST_CONSUMER"
           }}
       ]
       opts = [strategy: :one_for_one]
@@ -68,8 +68,8 @@ defmodule Jetstream.PullConsumer do
 
   @type settings :: %{
           connection_name: pid() | atom(),
-          stream: binary(),
-          consumer: binary()
+          stream_name: binary(),
+          consumer_name: binary()
         }
 
   defmacro __using__(_opts) do
@@ -83,8 +83,8 @@ defmodule Jetstream.PullConsumer do
       @spec child_spec(
               init_arg :: %{
                 connection_name: pid() | atom(),
-                stream: binary() | Jetstream.API.Stream.t(),
-                consumer: binary() | Jetstream.API.Consumer.t()
+                stream_name: binary(),
+                consumer_name: binary()
               }
             ) :: Supervisor.child_spec()
       def child_spec(init_arg) do
@@ -126,20 +126,20 @@ defmodule Jetstream.PullConsumer do
   def handle_continue(:connect, %{
         settings: %{
           connection_name: connection_name,
-          stream: stream,
-          consumer: consumer
+          stream_name: stream_name,
+          consumer_name: consumer_name
         },
         module: module
       }) do
     with {:ok, conn} <- connection_pid(connection_name),
-         true <- Process.link(conn),
+         Process.link(conn),
          listening_topic = "_CON.#{nuid()}",
          {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
-         :ok <- next_message(conn, stream_name(stream), consumer_name(consumer), listening_topic) do
+         :ok <- next_message(conn, stream_name, consumer_name, listening_topic) do
       state = %{
         settings: %{
-          stream_name: stream,
-          consumer_name: consumer,
+          stream_name: stream_name,
+          consumer_name: consumer_name,
           listening_topic: listening_topic
         },
         module: module
@@ -179,12 +179,6 @@ defmodule Jetstream.PullConsumer do
       reply_to: listening_topic
     )
   end
-
-  defp stream_name(stream) when is_binary(stream), do: stream
-  defp stream_name(stream), do: stream.name
-
-  defp consumer_name(consumer) when is_binary(consumer), do: consumer
-  defp consumer_name(consumer), do: consumer.durable_name
 
   def handle_info({:msg, message}, %{settings: settings, module: module} = state) do
     case module.handle_message(message) do
