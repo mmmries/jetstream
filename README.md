@@ -34,9 +34,3 @@ The test suite of this project is designed to interact with a live jetstream/NAT
 You can start one easily with this command: `docker-compose up`
 
 Or you can do `docker-compose up --no-start` and then use `docker-compose start` and `docker-compose stop` to start and stop the server.
-
-## License
-
-See the [LICENSE] file for license rights and limitations.
-
-[LICENSE]: https://github.com/mmmries/jetstream/blob/master/LICENSE.txt
