@@ -126,5 +126,29 @@ defmodule Jetstream.PullConsumerTest do
 
       assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
     end
+
+    test "connection_retires on unsucessful connection", %{
+      stream_name: stream_name,
+      consumer_name: consumer_name
+    } do
+      start_supervised!(
+        {ExamplePullConsumer,
+         %{
+           connection_name: :gnat,
+           stream_name: stream_name,
+           consumer_name: consumer_name,
+           connection_retry_timeout: 50,
+           connection_retires: 2
+         }},
+        restart: :temporary
+      )
+
+      assert pid = Process.whereis(ExamplePullConsumer)
+      assert is_pid(pid)
+
+      ref = Process.monitor(pid)
+
+      assert_receive {:DOWN, ^ref, :process, ^pid, :timeout}, 1_000
+    end
   end
 end

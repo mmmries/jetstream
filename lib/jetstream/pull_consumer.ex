@@ -71,9 +71,11 @@ defmodule Jetstream.PullConsumer do
               :ack | :nack | :noreply
 
   @type settings :: %{
-          connection_name: pid() | atom(),
-          stream_name: binary(),
-          consumer_name: binary()
+          :connection_name => pid() | atom(),
+          :stream_name => binary(),
+          :consumer_name => binary(),
+          optional(:connection_retry_timeout) => pos_integer(),
+          optional(:connection_retires) => pos_integer()
         }
 
   defmacro __using__(_opts) do
@@ -86,9 +88,11 @@ defmodule Jetstream.PullConsumer do
       """
       @spec child_spec(
               init_arg :: %{
-                connection_name: pid() | atom(),
-                stream_name: binary(),
-                consumer_name: binary()
+                :connection_name => pid() | atom(),
+                :stream_name => binary(),
+                :consumer_name => binary(),
+                optional(:connection_retry_timeout) => pos_integer(),
+                optional(:connection_retires) => pos_integer()
               }
             ) :: Supervisor.child_spec()
       def child_spec(init_arg) do
@@ -144,7 +148,10 @@ defmodule Jetstream.PullConsumer do
     Process.flag(:trap_exit, true)
 
     initial_state = %{
-      settings: settings,
+      settings:
+        settings
+        |> Map.put_new(:connection_retry_timeout, 1_000)
+        |> Map.put_new(:connection_retires, 10),
       listening_topic: "_CON.#{nuid()}",
       module: module
     }
@@ -158,7 +165,9 @@ defmodule Jetstream.PullConsumer do
           settings: %{
             stream_name: stream_name,
             consumer_name: consumer_name,
-            connection_name: connection_name
+            connection_name: connection_name,
+            connection_retry_timeout: connection_retry_timeout,
+            connection_retires: connection_retires
           },
           listening_topic: listening_topic,
           module: module
@@ -175,7 +184,8 @@ defmodule Jetstream.PullConsumer do
          Process.link(conn),
          {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
          state = Map.put(state, :subscription_id, sid),
-         :ok <- next_message(conn, stream_name, consumer_name, listening_topic) do
+         :ok <- next_message(conn, stream_name, consumer_name, listening_topic),
+         state = Map.delete(state, :current_retry) do
       {:ok, state}
     else
       {:error, reason} ->
@@ -190,7 +200,12 @@ defmodule Jetstream.PullConsumer do
           connection_name: connection_name
         )
 
-        {:backoff, 1_000, state}
+        if Map.get(state, :current_retry, 0) >= connection_retires do
+          {:stop, :timeout, Map.delete(state, :current_retry)}
+        else
+          state = Map.update(state, :current_retry, 0, fn retry -> retry + 1 end)
+          {:backoff, connection_retry_timeout, state}
+        end
     end
   end
 
