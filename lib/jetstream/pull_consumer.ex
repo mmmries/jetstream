@@ -189,20 +189,25 @@ defmodule Jetstream.PullConsumer do
       {:ok, state}
     else
       {:error, reason} ->
-        Logger.info(
-          """
-          #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat and will retry.
-
-          Reason: #{inspect(reason)}
-          """,
-          module: module,
-          listening_topic: listening_topic,
-          connection_name: connection_name
-        )
-
         if Map.get(state, :current_retry, 0) >= connection_retires do
+          Logger.error("""
+          #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat.
+          The retries limit has been reached - stopping.
+          """)
+
           {:stop, :timeout, Map.delete(state, :current_retry)}
         else
+          Logger.info(
+            """
+            #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat and will retry.
+
+            Reason: #{inspect(reason)}
+            """,
+            module: module,
+            listening_topic: listening_topic,
+            connection_name: connection_name
+          )
+
           state = Map.update(state, :current_retry, 0, fn retry -> retry + 1 end)
           {:backoff, connection_retry_timeout, state}
         end
