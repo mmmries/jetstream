@@ -172,7 +172,12 @@ defmodule Jetstream.PullConsumer do
           module: module
         } = state
       ) do
-    Logger.debug("#{module} is connecting to Gnat #{inspect(connection_name)}")
+    Logger.debug(
+      "#{__MODULE__} for #{stream_name}.#{consumer_name} is connecting to Gnat #{inspect(connection_name)}",
+      module: module,
+      listening_topic: listening_topic,
+      connection_name: connection_name
+    )
 
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
@@ -182,7 +187,12 @@ defmodule Jetstream.PullConsumer do
       {:ok, state}
     else
       {:error, reason} ->
-        Logger.info("#{module} failed to connect to Gnat (reason: #{reason}) and will try again.")
+        Logger.info(
+          "#{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat (reason: #{reason}) and will retry",
+          module: module,
+          listening_topic: listening_topic,
+          connection_name: connection_name
+        )
 
         {:backoff, 1_000, state}
     end
@@ -192,14 +202,34 @@ defmodule Jetstream.PullConsumer do
         {:close, from},
         %{
           settings: %{
+            stream_name: stream_name,
+            consumer_name: consumer_name,
+            listening_topic: listening_topic,
             connection_name: connection_name
           },
-          subscription_id: subscription_id
+          subscription_id: subscription_id,
+          module: module
         } = state
       ) do
+    Logger.info(
+      "#{__MODULE__} for #{stream_name}.#{consumer_name} is disconnecting from Gnat #{inspect(connection_name)}",
+      module: module,
+      listening_topic: listening_topic,
+      subscription_id: subscription_id,
+      connection_name: connection_name
+    )
+
     with {:ok, conn} <- connection_pid(connection_name),
          Process.unlink(conn),
          :ok <- Gnat.unsub(conn, subscription_id) do
+      Logger.info(
+        "#{__MODULE__} for #{stream_name}.#{consumer_name} is shutting down",
+        module: module,
+        listening_topic: listening_topic,
+        subscription_id: subscription_id,
+        connection_name: connection_name
+      )
+
       Connection.reply(from, :ok)
       {:stop, :shutdown, state}
     end
@@ -229,7 +259,17 @@ defmodule Jetstream.PullConsumer do
   end
 
   def handle_info({:msg, message}, %{settings: settings, module: module} = state) do
-    Logger.debug("#{module} has received a message: #{inspect(message)}")
+    Logger.debug(
+      """
+      #{settings.stream_name}.#{settings.consumer_name} has received a message:
+
+      #{inspect(message)}
+      """,
+      module: module,
+      listening_topic: settings.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: settings.connection_name
+    )
 
     case module.handle_message(message) do
       :ack ->
@@ -258,21 +298,46 @@ defmodule Jetstream.PullConsumer do
   end
 
   def handle_info({:EXIT, _pid, _reason}, state) do
-    Logger.info("NATS connection has died. PullConsumer is reconnecting.")
+    Logger.info(
+      """
+        #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name}: NATS connection has died.
+        PullConsumer is reconnecting.
+      """,
+      module: state.module,
+      listening_topic: state.settings.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: state.settings.connection_name
+    )
 
     {:connect, :reconnect, state}
   end
 
   def handle_info(other, state) do
-    Logger.error("""
-    #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received unexpected message:
-    #{inspect(other)}
-    """)
+    Logger.error(
+      """
+      #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received unexpected message:
+      #{inspect(other)}
+      """,
+      module: state.module,
+      listening_topic: state.settings.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: state.settings.connection_name
+    )
 
     {:noreply, state}
   end
 
   def handle_call(:close, from, state) do
+    Logger.debug(
+      """
+      #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received a :close call.
+      """,
+      module: state.module,
+      listening_topic: state.settings.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: state.settings.connection_name
+    )
+
     {:disconnect, {:close, from}, state}
   end
 

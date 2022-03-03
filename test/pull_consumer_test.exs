@@ -120,9 +120,11 @@ defmodule Jetstream.PullConsumerTest do
       assert pid = Process.whereis(ExamplePullConsumer)
       assert is_pid(pid)
 
+      ref = Process.monitor(pid)
+
       assert :ok = ExamplePullConsumer.close()
 
-      assert nil == Process.whereis(ExamplePullConsumer)
+      assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
     end
   end
 end
