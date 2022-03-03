@@ -173,7 +173,7 @@ defmodule Jetstream.PullConsumer do
         } = state
       ) do
     Logger.debug(
-      "#{__MODULE__} for #{stream_name}.#{consumer_name} is connecting to Gnat #{inspect(connection_name)}",
+      "#{__MODULE__} for #{stream_name}.#{consumer_name} is connecting to Gnat.",
       module: module,
       listening_topic: listening_topic,
       connection_name: connection_name
@@ -188,7 +188,11 @@ defmodule Jetstream.PullConsumer do
     else
       {:error, reason} ->
         Logger.info(
-          "#{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat (reason: #{reason}) and will retry",
+          """
+          #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat and will retry.
+
+          Reason: #{inspect(reason)}
+          """,
           module: module,
           listening_topic: listening_topic,
           connection_name: connection_name
@@ -212,7 +216,7 @@ defmodule Jetstream.PullConsumer do
         } = state
       ) do
     Logger.info(
-      "#{__MODULE__} for #{stream_name}.#{consumer_name} is disconnecting from Gnat #{inspect(connection_name)}",
+      "#{__MODULE__} for #{stream_name}.#{consumer_name} is disconnecting from Gnat.",
       module: module,
       listening_topic: listening_topic,
       subscription_id: subscription_id,
@@ -261,7 +265,7 @@ defmodule Jetstream.PullConsumer do
   def handle_info({:msg, message}, %{settings: settings, module: module} = state) do
     Logger.debug(
       """
-      #{settings.stream_name}.#{settings.consumer_name} has received a message:
+      #{__MODULE__} for #{settings.stream_name}.#{settings.consumer_name} has received a message:
 
       #{inspect(message)}
       """,
