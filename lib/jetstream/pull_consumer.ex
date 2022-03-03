@@ -122,42 +122,27 @@ defmodule Jetstream.PullConsumer do
     }
   end
 
-  def init(arg) do
-    Process.flag(:trap_exit, true)
-
-    {:connect, :init, arg}
-  end
-
-  def connect(
-        _,
-        %{
-          settings: %{
-            connection_name: connection_name,
-            stream_name: stream_name,
-            consumer_name: consumer_name
-          },
-          module: module
-        } = settings
-      ) do
-    with {:ok, conn} <- connection_pid(connection_name),
-         Process.link(conn),
-         listening_topic = "_CON.#{nuid()}",
-         {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
-         :ok <- next_message(conn, stream_name, consumer_name, listening_topic) do
-      state = %{
+  def init(%{
         settings: %{
+          connection_name: connection_name,
           stream_name: stream_name,
-          consumer_name: consumer_name,
-          listening_topic: listening_topic,
-          connection_name: connection_name
+          consumer_name: consumer_name
         },
         module: module
-      }
+      }) do
+    Process.flag(:trap_exit, true)
 
-      {:ok, state}
-    else
-      _ -> {:backoff, 1_000, settings}
-    end
+    initial_state = %{
+      settings: %{
+        stream_name: stream_name,
+        consumer_name: consumer_name,
+        listening_topic: "_CON.#{nuid()}",
+        connection_name: connection_name
+      },
+      module: module
+    }
+
+    {:connect, :init, initial_state}
   end
 
   def connect(
