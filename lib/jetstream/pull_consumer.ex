@@ -138,22 +138,14 @@ defmodule Jetstream.PullConsumer do
   def close(ref), do: Connection.call(ref, :close)
 
   def init(%{
-        settings: %{
-          connection_name: connection_name,
-          stream_name: stream_name,
-          consumer_name: consumer_name
-        },
+        settings: settings,
         module: module
       }) do
     Process.flag(:trap_exit, true)
 
     initial_state = %{
-      settings: %{
-        stream_name: stream_name,
-        consumer_name: consumer_name,
-        listening_topic: "_CON.#{nuid()}",
-        connection_name: connection_name
-      },
+      settings: settings,
+      listening_topic: "_CON.#{nuid()}",
       module: module
     }
 
@@ -166,9 +158,9 @@ defmodule Jetstream.PullConsumer do
           settings: %{
             stream_name: stream_name,
             consumer_name: consumer_name,
-            listening_topic: listening_topic,
             connection_name: connection_name
           },
+          listening_topic: listening_topic,
           module: module
         } = state
       ) do
@@ -208,9 +200,9 @@ defmodule Jetstream.PullConsumer do
           settings: %{
             stream_name: stream_name,
             consumer_name: consumer_name,
-            listening_topic: listening_topic,
             connection_name: connection_name
           },
+          listening_topic: listening_topic,
           subscription_id: subscription_id,
           module: module
         } = state
@@ -270,14 +262,14 @@ defmodule Jetstream.PullConsumer do
       #{inspect(message)}
       """,
       module: module,
-      listening_topic: settings.listening_topic,
+      listening_topic: state.listening_topic,
       subscription_id: state.subscription_id,
       connection_name: settings.connection_name
     )
 
     case module.handle_message(message) do
       :ack ->
-        Jetstream.ack_next(message, settings.listening_topic)
+        Jetstream.ack_next(message, state.listening_topic)
 
       :nack ->
         Jetstream.nack(message)
@@ -286,7 +278,7 @@ defmodule Jetstream.PullConsumer do
           message.gnat,
           settings.stream_name,
           settings.consumer_name,
-          settings.listening_topic
+          state.listening_topic
         )
 
       :noreply ->
@@ -294,7 +286,7 @@ defmodule Jetstream.PullConsumer do
           message.gnat,
           settings.stream_name,
           settings.consumer_name,
-          settings.listening_topic
+          state.listening_topic
         )
     end
 
@@ -308,7 +300,7 @@ defmodule Jetstream.PullConsumer do
         PullConsumer is reconnecting.
       """,
       module: state.module,
-      listening_topic: state.settings.listening_topic,
+      listening_topic: state.listening_topic,
       subscription_id: state.subscription_id,
       connection_name: state.settings.connection_name
     )
@@ -323,7 +315,7 @@ defmodule Jetstream.PullConsumer do
       #{inspect(other)}
       """,
       module: state.module,
-      listening_topic: state.settings.listening_topic,
+      listening_topic: state.listening_topic,
       subscription_id: state.subscription_id,
       connection_name: state.settings.connection_name
     )
@@ -337,7 +329,7 @@ defmodule Jetstream.PullConsumer do
       #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received a :close call.
       """,
       module: state.module,
-      listening_topic: state.settings.listening_topic,
+      listening_topic: state.listening_topic,
       subscription_id: state.subscription_id,
       connection_name: state.settings.connection_name
     )
