@@ -127,7 +127,7 @@ defmodule Jetstream.PullConsumerTest do
       assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
     end
 
-    test "connection_retires on unsucessful connection", %{
+    test "retires on unsucessful connection", %{
       stream_name: stream_name,
       consumer_name: consumer_name
     } do
