@@ -49,6 +49,10 @@ defmodule Jetstream.PullConsumer do
   Note that the stream and its consumer, which names were given, must exist.
   """
 
+  use Connection
+
+  require Logger
+
   @doc """
   Called when the Pull Consumer recives a message. Depending on the value it returns, the acknowledgement
   is or is not sent.
@@ -63,9 +67,6 @@ defmodule Jetstream.PullConsumer do
 
   * `:noreply` - nothing is sent.
   """
-
-  use Connection
-
   @callback handle_message(message :: Jetstream.message()) ::
               :ack | :nack | :noreply
 
@@ -153,16 +154,22 @@ defmodule Jetstream.PullConsumer do
             consumer_name: consumer_name,
             listening_topic: listening_topic,
             connection_name: connection_name
-          }
+          },
+          module: module
         } = state
       ) do
+    Logger.debug("#{module} is connecting to Gnat #{inspect(connection_name)}")
+
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
          {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
          :ok <- next_message(conn, stream_name, consumer_name, listening_topic) do
       {:ok, state}
     else
-      _ -> {:backoff, 1_000, state}
+      {:error, reason} ->
+        Logger.info("#{module} failed to connect to Gnat (reason: #{reason}) and will try again.")
+
+        {:backoff, 1_000, state}
     end
   end
 
@@ -190,6 +197,8 @@ defmodule Jetstream.PullConsumer do
   end
 
   def handle_info({:msg, message}, %{settings: settings, module: module} = state) do
+    Logger.debug("#{module} has received a message: #{inspect(message)}")
+
     case module.handle_message(message) do
       :ack ->
         Jetstream.ack_next(message, settings.listening_topic)
@@ -217,12 +226,12 @@ defmodule Jetstream.PullConsumer do
   end
 
   def handle_info({:EXIT, _pid, _reason}, state) do
+    Logger.info("NATS connection has died. PullConsumer is reconnecting.")
+
     {:connect, :reconnect, state}
   end
 
   def handle_info(other, state) do
-    require Logger
-
     Logger.error("""
     #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received unexpected message:
     #{inspect(other)}
