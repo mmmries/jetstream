@@ -96,6 +96,13 @@ defmodule Jetstream.PullConsumer do
       end
 
       defoverridable child_spec: 1
+
+      @spec close() :: :ok
+      def close() do
+        Jetstream.PullConsumer.close(__MODULE__)
+      end
+
+      defoverridable close: 0
     end
   end
 
@@ -118,10 +125,17 @@ defmodule Jetstream.PullConsumer do
         {__MODULE__, :start_link,
          [
            module,
-           init_arg
+           init_arg,
+           [name: module]
          ]}
     }
   end
+
+  @doc """
+  Closes the NATS connection and stops the Pull Consumer.
+  """
+  @spec close(ref :: GenServer.server()) :: :ok
+  def close(ref), do: Connection.call(ref, :close)
 
   def init(%{
         settings: %{
@@ -162,7 +176,8 @@ defmodule Jetstream.PullConsumer do
 
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
-         {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
+         {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
+         state = Map.put(state, :subscription_id, sid),
          :ok <- next_message(conn, stream_name, consumer_name, listening_topic) do
       {:ok, state}
     else
@@ -170,6 +185,23 @@ defmodule Jetstream.PullConsumer do
         Logger.info("#{module} failed to connect to Gnat (reason: #{reason}) and will try again.")
 
         {:backoff, 1_000, state}
+    end
+  end
+
+  def disconnect(
+        {:close, from},
+        %{
+          settings: %{
+            connection_name: connection_name
+          },
+          subscription_id: subscription_id
+        } = state
+      ) do
+    with {:ok, conn} <- connection_pid(connection_name),
+         Process.unlink(conn),
+         :ok <- Gnat.unsub(conn, subscription_id) do
+      Connection.reply(from, :ok)
+      {:stop, :shutdown, state}
     end
   end
 
@@ -238,6 +270,10 @@ defmodule Jetstream.PullConsumer do
     """)
 
     {:noreply, state}
+  end
+
+  def handle_call(:close, from, state) do
+    {:disconnect, {:close, from}, state}
   end
 
   defp nuid(), do: :crypto.strong_rand_bytes(12) |> Base.encode64()

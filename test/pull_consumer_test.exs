@@ -102,5 +102,27 @@ defmodule Jetstream.PullConsumerTest do
       assert_receive {:msg, %{body: "+NXT", topic: topic}}
       assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
     end
+
+    test "can be manually closed", %{
+      conn: conn,
+      stream_name: stream_name,
+      consumer_name: consumer_name
+    } do
+      start_supervised!(
+        {ExamplePullConsumer,
+         %{
+           connection_name: conn,
+           stream_name: stream_name,
+           consumer_name: consumer_name
+         }}
+      )
+
+      assert pid = Process.whereis(ExamplePullConsumer)
+      assert is_pid(pid)
+
+      assert :ok = ExamplePullConsumer.close()
+
+      assert nil == Process.whereis(ExamplePullConsumer)
+    end
   end
 end
