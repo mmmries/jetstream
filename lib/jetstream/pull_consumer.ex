@@ -112,15 +112,12 @@ defmodule Jetstream.PullConsumer do
           GenServer.on_start()
   def start_link(module, settings, options \\ []) do
     state = %{
-      settings: settings_to_map(settings),
+      settings: Map.new(settings),
       module: module
     }
 
     Connection.start_link(__MODULE__, state, options)
   end
-
-  defp settings_to_map(settings) when is_map(settings), do: settings
-  defp settings_to_map(settings), do: Enum.into(settings, %{})
 
   @spec child_spec(module :: module(), init_arg :: settings()) :: Supervisor.child_spec()
   def child_spec(module, init_arg) do
