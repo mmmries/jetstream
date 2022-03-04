@@ -38,7 +38,8 @@ defmodule Jetstream.PullConsumer do
             connection_name: :gnat,
             stream_name: "TEST_STREAM",
             consumer_name: "TEST_CONSUMER"
-          }}
+          }
+        }
       ]
       opts = [strategy: :one_for_one]
       Supervisor.start_link(children, opts)
@@ -48,6 +49,10 @@ defmodule Jetstream.PullConsumer do
 
   Note that the stream and its consumer, which names were given, must exist.
   """
+
+  use Connection
+
+  require Logger
 
   @doc """
   Called when the Pull Consumer recives a message. Depending on the value it returns, the acknowledgement
@@ -67,9 +72,11 @@ defmodule Jetstream.PullConsumer do
               :ack | :nack | :noreply
 
   @type settings :: %{
-          connection_name: pid() | atom(),
-          stream_name: binary(),
-          consumer_name: binary()
+          :connection_name => GenServer.server(),
+          :stream_name => binary(),
+          :consumer_name => binary(),
+          optional(:connection_retry_timeout) => pos_integer(),
+          optional(:connection_retries) => pos_integer()
         }
 
   defmacro __using__(_opts) do
@@ -80,18 +87,18 @@ defmodule Jetstream.PullConsumer do
       Returns a specification to start this module under a supervisor.
       See `Supervisor`.
       """
-      @spec child_spec(
-              init_arg :: %{
-                connection_name: pid() | atom(),
-                stream_name: binary(),
-                consumer_name: binary()
-              }
-            ) :: Supervisor.child_spec()
+      @spec child_spec(init_arg :: Jetstream.PullConsumer.settings()) :: Supervisor.child_spec()
       def child_spec(init_arg) do
         Jetstream.PullConsumer.child_spec(__MODULE__, init_arg)
       end
 
-      defoverridable child_spec: 1
+      @spec close(pull_consumer :: GenServer.server()) :: :ok
+      def close(pull_consumer) do
+        Jetstream.PullConsumer.close(pull_consumer)
+      end
+
+      defoverridable child_spec: 1,
+                     close: 1
     end
   end
 
@@ -103,7 +110,7 @@ defmodule Jetstream.PullConsumer do
       module: module
     }
 
-    GenServer.start_link(__MODULE__, settings, options)
+    Connection.start_link(__MODULE__, settings, options)
   end
 
   @spec child_spec(module :: module(), init_arg :: settings()) :: Supervisor.child_spec()
@@ -119,52 +126,134 @@ defmodule Jetstream.PullConsumer do
     }
   end
 
-  def init(arg) do
-    {:ok, arg, {:continue, :connect}}
-  end
+  @doc """
+  Closes the NATS connection and stops the Pull Consumer.
+  """
+  @spec close(ref :: GenServer.server()) :: :ok
+  def close(ref), do: Connection.call(ref, :close)
 
-  def handle_continue(:connect, %{
-        settings: %{
-          connection_name: connection_name,
-          stream_name: stream_name,
-          consumer_name: consumer_name
-        },
+  def init(%{
+        settings: settings,
         module: module
       }) do
+    Process.flag(:trap_exit, true)
+
+    initial_state = %{
+      settings:
+        settings
+        |> Map.put_new(:connection_retry_timeout, 1_000)
+        |> Map.put_new(:connection_retries, 10),
+      listening_topic: "_CON.#{nuid()}",
+      module: module
+    }
+
+    {:connect, :init, initial_state}
+  end
+
+  def connect(
+        _,
+        %{
+          settings: %{
+            stream_name: stream_name,
+            consumer_name: consumer_name,
+            connection_name: connection_name,
+            connection_retry_timeout: connection_retry_timeout,
+            connection_retries: connection_retries
+          },
+          listening_topic: listening_topic,
+          module: module
+        } = state
+      ) do
+    Logger.debug(
+      "#{__MODULE__} for #{stream_name}.#{consumer_name} is connecting to Gnat.",
+      module: module,
+      listening_topic: listening_topic,
+      connection_name: connection_name
+    )
+
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
-         listening_topic = "_CON.#{nuid()}",
-         {:ok, _sid} <- Gnat.sub(conn, self(), listening_topic),
-         :ok <- next_message(conn, stream_name, consumer_name, listening_topic) do
-      state = %{
-        settings: %{
-          stream_name: stream_name,
-          consumer_name: consumer_name,
-          listening_topic: listening_topic
-        },
-        module: module
-      }
-
-      {:noreply, state}
+         {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
+         state = Map.put(state, :subscription_id, sid),
+         :ok <- next_message(conn, stream_name, consumer_name, listening_topic),
+         state = Map.delete(state, :current_retry) do
+      {:ok, state}
     else
-      error -> {:stop, error, %{}}
+      {:error, reason} ->
+        if Map.get(state, :current_retry, 0) >= connection_retries do
+          Logger.error(
+            """
+            #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to NATS and retries limit \
+            has been exhausted. Stopping.
+            """,
+            module: module,
+            listening_topic: listening_topic,
+            connection_name: connection_name
+          )
+
+          {:stop, :timeout, Map.delete(state, :current_retry)}
+        else
+          Logger.debug(
+            """
+            #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat and will retry. \
+            Reason: #{inspect(reason)}
+            """,
+            module: module,
+            listening_topic: listening_topic,
+            connection_name: connection_name
+          )
+
+          state = Map.update(state, :current_retry, 0, fn retry -> retry + 1 end)
+          {:backoff, connection_retry_timeout, state}
+        end
     end
   end
 
-  defp connection_pid(connection_name, retries \\ 5)
+  def disconnect(
+        {:close, from},
+        %{
+          settings: %{
+            stream_name: stream_name,
+            consumer_name: consumer_name,
+            connection_name: connection_name
+          },
+          listening_topic: listening_topic,
+          subscription_id: subscription_id,
+          module: module
+        } = state
+      ) do
+    Logger.debug(
+      "#{__MODULE__} for #{stream_name}.#{consumer_name} is disconnecting from Gnat.",
+      module: module,
+      listening_topic: listening_topic,
+      subscription_id: subscription_id,
+      connection_name: connection_name
+    )
 
-  defp connection_pid(_connection_name, 0), do: {:error, :not_found}
+    with {:ok, conn} <- connection_pid(connection_name),
+         Process.unlink(conn),
+         :ok <- Gnat.unsub(conn, subscription_id) do
+      Logger.debug(
+        "#{__MODULE__} for #{stream_name}.#{consumer_name} is shutting down",
+        module: module,
+        listening_topic: listening_topic,
+        subscription_id: subscription_id,
+        connection_name: connection_name
+      )
 
-  defp connection_pid(connection_name, _retries) when is_pid(connection_name),
-    do: {:ok, connection_name}
+      Connection.reply(from, :ok)
+      {:stop, :shutdown, state}
+    end
+  end
 
-  defp connection_pid(connection_name, retries) do
+  defp connection_pid(connection_name) when is_pid(connection_name) do
+    if Process.alive?(connection_name), do: {:ok, connection_name}, else: {:error, :not_alive}
+  end
+
+  defp connection_pid(connection_name) do
     case Process.whereis(connection_name) do
       nil ->
-        # WORKAROUND: Gnat connection is not started immediately with Connection Supervisor.
-        # This is a temporary hack.
-        Process.sleep(500)
-        connection_pid(connection_name, retries - 1)
+        {:error, :not_found}
 
       pid ->
         {:ok, pid}
@@ -181,9 +270,20 @@ defmodule Jetstream.PullConsumer do
   end
 
   def handle_info({:msg, message}, %{settings: settings, module: module} = state) do
+    Logger.debug(
+      """
+      #{__MODULE__} for #{settings.stream_name}.#{settings.consumer_name} has received a message: \
+      #{inspect(message, pretty: true)}
+      """,
+      module: module,
+      listening_topic: state.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: settings.connection_name
+    )
+
     case module.handle_message(message) do
       :ack ->
-        Jetstream.ack_next(message, settings.listening_topic)
+        Jetstream.ack_next(message, state.listening_topic)
 
       :nack ->
         Jetstream.nack(message)
@@ -192,7 +292,7 @@ defmodule Jetstream.PullConsumer do
           message.gnat,
           settings.stream_name,
           settings.consumer_name,
-          settings.listening_topic
+          state.listening_topic
         )
 
       :noreply ->
@@ -200,22 +300,53 @@ defmodule Jetstream.PullConsumer do
           message.gnat,
           settings.stream_name,
           settings.consumer_name,
-          settings.listening_topic
+          state.listening_topic
         )
     end
 
     {:noreply, state}
   end
 
-  def handle_info(other, state) do
-    require Logger
+  def handle_info({:EXIT, _pid, _reason}, state) do
+    Logger.debug(
+      """
+        #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name}: NATS connection has died. \
+        PullConsumer is reconnecting.
+      """,
+      module: state.module,
+      listening_topic: state.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: state.settings.connection_name
+    )
 
-    Logger.error("""
-    #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received unexpected message:
-    #{inspect(other)}
-    """)
+    {:connect, :reconnect, state}
+  end
+
+  def handle_info(other, state) do
+    Logger.debug(
+      """
+      #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received unexpected message: \
+      #{inspect(other, pretty: true)}
+      """,
+      module: state.module,
+      listening_topic: state.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: state.settings.connection_name
+    )
 
     {:noreply, state}
+  end
+
+  def handle_call(:close, from, state) do
+    Logger.debug(
+      "#{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received a :close call.",
+      module: state.module,
+      listening_topic: state.listening_topic,
+      subscription_id: state.subscription_id,
+      connection_name: state.settings.connection_name
+    )
+
+    {:disconnect, {:close, from}, state}
   end
 
   defp nuid(), do: :crypto.strong_rand_bytes(12) |> Base.encode64()

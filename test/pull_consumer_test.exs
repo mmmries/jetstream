@@ -102,5 +102,49 @@ defmodule Jetstream.PullConsumerTest do
       assert_receive {:msg, %{body: "+NXT", topic: topic}}
       assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
     end
+
+    test "can be manually closed", %{
+      conn: conn,
+      stream_name: stream_name,
+      consumer_name: consumer_name
+    } do
+      pid =
+        start_supervised!(
+          {ExamplePullConsumer,
+           %{
+             connection_name: conn,
+             stream_name: stream_name,
+             consumer_name: consumer_name
+           }}
+        )
+
+      ref = Process.monitor(pid)
+
+      assert :ok = ExamplePullConsumer.close(pid)
+
+      assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
+    end
+
+    test "retries on unsucessful connection", %{
+      stream_name: stream_name,
+      consumer_name: consumer_name
+    } do
+      pid =
+        start_supervised!(
+          {ExamplePullConsumer,
+           %{
+             connection_name: :gnat,
+             stream_name: stream_name,
+             consumer_name: consumer_name,
+             connection_retry_timeout: 50,
+             connection_retries: 2
+           }},
+          restart: :temporary
+        )
+
+      ref = Process.monitor(pid)
+
+      assert_receive {:DOWN, ^ref, :process, ^pid, :timeout}, 1_000
+    end
   end
 end
