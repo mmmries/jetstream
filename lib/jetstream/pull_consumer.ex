@@ -34,11 +34,9 @@ defmodule Jetstream.PullConsumer do
         {Gnat.ConnectionSupervisor, ...},
         # Start NATS Jetstream Pull Consumer
         {MyApp.PullConsumer,
-          %{
-            connection_name: :gnat,
-            stream_name: "TEST_STREAM",
-            consumer_name: "TEST_CONSUMER"
-          }
+          connection_name: :gnat,
+          stream_name: "TEST_STREAM",
+          consumer_name: "TEST_CONSUMER"
         }
       ]
       opts = [strategy: :one_for_one]
@@ -71,13 +69,21 @@ defmodule Jetstream.PullConsumer do
   @callback handle_message(message :: Jetstream.message()) ::
               :ack | :nack | :noreply
 
-  @type settings :: %{
-          :connection_name => GenServer.server(),
-          :stream_name => binary(),
-          :consumer_name => binary(),
-          optional(:connection_retry_timeout) => pos_integer(),
-          optional(:connection_retries) => pos_integer()
-        }
+  @type settings ::
+          %{
+            :connection_name => GenServer.server(),
+            :stream_name => binary(),
+            :consumer_name => binary(),
+            optional(:connection_retry_timeout) => pos_integer(),
+            optional(:connection_retries) => pos_integer()
+          }
+          | [
+              connection_name: GenServer.server(),
+              stream_name: binary(),
+              consumer_name: binary(),
+              connection_retry_timeout: pos_integer(),
+              connection_retries: pos_integer()
+            ]
 
   defmacro __using__(_opts) do
     quote do
@@ -105,13 +111,16 @@ defmodule Jetstream.PullConsumer do
   @spec start_link(module :: module(), settings :: settings(), options :: GenServer.options()) ::
           GenServer.on_start()
   def start_link(module, settings, options \\ []) do
-    settings = %{
-      settings: settings,
+    state = %{
+      settings: settings_to_map(settings),
       module: module
     }
 
-    Connection.start_link(__MODULE__, settings, options)
+    Connection.start_link(__MODULE__, state, options)
   end
+
+  defp settings_to_map(settings) when is_map(settings), do: settings
+  defp settings_to_map(settings), do: Enum.into(settings, %{})
 
   @spec child_spec(module :: module(), init_arg :: settings()) :: Supervisor.child_spec()
   def child_spec(module, init_arg) do
