@@ -194,7 +194,7 @@ defmodule Jetstream.PullConsumer do
         if Map.get(state, :current_retry, 0) >= connection_retries do
           Logger.error(
             """
-            #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to NATS and retries limit\
+            #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to NATS and retries limit \
             has been exhausted. Stopping.
             """,
             module: module,
@@ -206,7 +206,7 @@ defmodule Jetstream.PullConsumer do
         else
           Logger.debug(
             """
-            #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat and will retry.\
+            #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to Gnat and will retry. \
             Reason: #{inspect(reason)}
             """,
             module: module,
@@ -283,7 +283,7 @@ defmodule Jetstream.PullConsumer do
   def handle_info({:msg, message}, %{settings: settings, module: module} = state) do
     Logger.debug(
       """
-      #{__MODULE__} for #{settings.stream_name}.#{settings.consumer_name} has received a message:\
+      #{__MODULE__} for #{settings.stream_name}.#{settings.consumer_name} has received a message: \
       #{inspect(message, pretty: true)}
       """,
       module: module,
@@ -321,7 +321,7 @@ defmodule Jetstream.PullConsumer do
   def handle_info({:EXIT, _pid, _reason}, state) do
     Logger.debug(
       """
-        #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name}: NATS connection has died.\
+        #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name}: NATS connection has died. \
         PullConsumer is reconnecting.
       """,
       module: state.module,
@@ -336,7 +336,7 @@ defmodule Jetstream.PullConsumer do
   def handle_info(other, state) do
     Logger.debug(
       """
-      #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received unexpected message:\
+      #{__MODULE__} for #{state.settings.stream_name}.#{state.settings.consumer_name} received unexpected message: \
       #{inspect(other, pretty: true)}
       """,
       module: state.module,
