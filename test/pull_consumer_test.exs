@@ -50,7 +50,7 @@ defmodule Jetstream.PullConsumerTest do
     } do
       start_supervised!(
         {ExamplePullConsumer,
-         %{
+         settings: %{
            connection_name: conn,
            stream_name: stream_name,
            consumer_name: consumer_name
@@ -70,7 +70,7 @@ defmodule Jetstream.PullConsumerTest do
          } do
       start_supervised!(
         {ExamplePullConsumer,
-         %{
+         settings: %{
            connection_name: conn,
            stream_name: stream_name,
            consumer_name: consumer_name
@@ -110,11 +110,12 @@ defmodule Jetstream.PullConsumerTest do
     } do
       start_supervised!(
         {ExamplePullConsumer,
-         %{
+         settings: %{
            connection_name: conn,
            stream_name: stream_name,
            consumer_name: consumer_name
-         }}
+         },
+         options: [name: ExamplePullConsumer]}
       )
 
       assert pid = Process.whereis(ExamplePullConsumer)
@@ -122,24 +123,25 @@ defmodule Jetstream.PullConsumerTest do
 
       ref = Process.monitor(pid)
 
-      assert :ok = ExamplePullConsumer.close()
+      assert :ok = ExamplePullConsumer.close(ExamplePullConsumer)
 
       assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
     end
 
-    test "retires on unsucessful connection", %{
+    test "retries on unsucessful connection", %{
       stream_name: stream_name,
       consumer_name: consumer_name
     } do
       start_supervised!(
         {ExamplePullConsumer,
-         %{
+         settings: %{
            connection_name: :gnat,
            stream_name: stream_name,
            consumer_name: consumer_name,
            connection_retry_timeout: 50,
-           connection_retires: 2
-         }},
+           connection_retries: 2
+         },
+         options: [name: ExamplePullConsumer]},
         restart: :temporary
       )
 
