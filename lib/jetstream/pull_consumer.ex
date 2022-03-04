@@ -38,8 +38,9 @@ defmodule Jetstream.PullConsumer do
             connection_name: :gnat,
             stream_name: "TEST_STREAM",
             consumer_name: "TEST_CONSUMER"
-          }},
+          },
           options: [name: MyApp.PullConsumer]
+        }
       ]
       opts = [strategy: :one_for_one]
       Supervisor.start_link(children, opts)
