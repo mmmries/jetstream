@@ -34,12 +34,11 @@ defmodule Jetstream.PullConsumer do
         {Gnat.ConnectionSupervisor, ...},
         # Start NATS Jetstream Pull Consumer
         {MyApp.PullConsumer,
-          settings: %{
+          %{
             connection_name: :gnat,
             stream_name: "TEST_STREAM",
             consumer_name: "TEST_CONSUMER"
-          },
-          options: [name: MyApp.PullConsumer]
+          }
         }
       ]
       opts = [strategy: :one_for_one]
@@ -88,14 +87,7 @@ defmodule Jetstream.PullConsumer do
       Returns a specification to start this module under a supervisor.
       See `Supervisor`.
       """
-      @spec child_spec(
-              init_arg ::
-                [settings: Jetstream.PullConsumer.settings()]
-                | [
-                    settings: Jetstream.PullConsumer.settings(),
-                    options: GenServer.options()
-                  ]
-            ) :: Supervisor.child_spec()
+      @spec child_spec(init_arg :: Jetstream.PullConsumer.settings()) :: Supervisor.child_spec()
       def child_spec(init_arg) do
         Jetstream.PullConsumer.child_spec(__MODULE__, init_arg)
       end
@@ -121,10 +113,7 @@ defmodule Jetstream.PullConsumer do
     Connection.start_link(__MODULE__, settings, options)
   end
 
-  @spec child_spec(
-          module :: module(),
-          init_arg :: [settings: settings(), options: GenServer.options()]
-        ) :: Supervisor.child_spec()
+  @spec child_spec(module :: module(), init_arg :: settings()) :: Supervisor.child_spec()
   def child_spec(module, init_arg) do
     %{
       id: __MODULE__,
@@ -132,8 +121,7 @@ defmodule Jetstream.PullConsumer do
         {__MODULE__, :start_link,
          [
            module,
-           init_arg[:settings],
-           init_arg[:options] || []
+           init_arg
          ]}
     }
   end

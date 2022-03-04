@@ -50,7 +50,7 @@ defmodule Jetstream.PullConsumerTest do
     } do
       start_supervised!(
         {ExamplePullConsumer,
-         settings: %{
+         %{
            connection_name: conn,
            stream_name: stream_name,
            consumer_name: consumer_name
@@ -70,7 +70,7 @@ defmodule Jetstream.PullConsumerTest do
          } do
       start_supervised!(
         {ExamplePullConsumer,
-         settings: %{
+         %{
            connection_name: conn,
            stream_name: stream_name,
            consumer_name: consumer_name
@@ -108,22 +108,19 @@ defmodule Jetstream.PullConsumerTest do
       stream_name: stream_name,
       consumer_name: consumer_name
     } do
-      start_supervised!(
-        {ExamplePullConsumer,
-         settings: %{
-           connection_name: conn,
-           stream_name: stream_name,
-           consumer_name: consumer_name
-         },
-         options: [name: ExamplePullConsumer]}
-      )
-
-      assert pid = Process.whereis(ExamplePullConsumer)
-      assert is_pid(pid)
+      pid =
+        start_supervised!(
+          {ExamplePullConsumer,
+           %{
+             connection_name: conn,
+             stream_name: stream_name,
+             consumer_name: consumer_name
+           }}
+        )
 
       ref = Process.monitor(pid)
 
-      assert :ok = ExamplePullConsumer.close(ExamplePullConsumer)
+      assert :ok = ExamplePullConsumer.close(pid)
 
       assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
     end
@@ -132,21 +129,18 @@ defmodule Jetstream.PullConsumerTest do
       stream_name: stream_name,
       consumer_name: consumer_name
     } do
-      start_supervised!(
-        {ExamplePullConsumer,
-         settings: %{
-           connection_name: :gnat,
-           stream_name: stream_name,
-           consumer_name: consumer_name,
-           connection_retry_timeout: 50,
-           connection_retries: 2
-         },
-         options: [name: ExamplePullConsumer]},
-        restart: :temporary
-      )
-
-      assert pid = Process.whereis(ExamplePullConsumer)
-      assert is_pid(pid)
+      pid =
+        start_supervised!(
+          {ExamplePullConsumer,
+           %{
+             connection_name: :gnat,
+             stream_name: stream_name,
+             consumer_name: consumer_name,
+             connection_retry_timeout: 50,
+             connection_retries: 2
+           }},
+          restart: :temporary
+        )
 
       ref = Process.monitor(pid)
 
