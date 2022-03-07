@@ -50,11 +50,7 @@ defmodule Jetstream.PullConsumerTest do
     } do
       start_supervised!(
         {ExamplePullConsumer,
-         %{
-           connection_name: conn,
-           stream_name: stream_name,
-           consumer_name: consumer_name
-         }}
+         connection_name: conn, stream_name: stream_name, consumer_name: consumer_name}
       )
 
       :ok = Gnat.pub(conn, "skippable", "hello")
@@ -70,11 +66,7 @@ defmodule Jetstream.PullConsumerTest do
          } do
       start_supervised!(
         {ExamplePullConsumer,
-         %{
-           connection_name: conn,
-           stream_name: stream_name,
-           consumer_name: consumer_name
-         }}
+         connection_name: conn, stream_name: stream_name, consumer_name: consumer_name}
       )
 
       Gnat.sub(conn, self(), "$JS.ACK.#{stream_name}.#{consumer_name}.>")
@@ -111,11 +103,7 @@ defmodule Jetstream.PullConsumerTest do
       pid =
         start_supervised!(
           {ExamplePullConsumer,
-           %{
-             connection_name: conn,
-             stream_name: stream_name,
-             consumer_name: consumer_name
-           }}
+           connection_name: conn, stream_name: stream_name, consumer_name: consumer_name}
         )
 
       ref = Process.monitor(pid)
@@ -132,13 +120,11 @@ defmodule Jetstream.PullConsumerTest do
       pid =
         start_supervised!(
           {ExamplePullConsumer,
-           %{
-             connection_name: :gnat,
-             stream_name: stream_name,
-             consumer_name: consumer_name,
-             connection_retry_timeout: 50,
-             connection_retries: 2
-           }},
+           connection_name: :gnat,
+           stream_name: stream_name,
+           consumer_name: consumer_name,
+           connection_retry_timeout: 50,
+           connection_retries: 2},
           restart: :temporary
         )
 
