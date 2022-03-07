@@ -56,7 +56,7 @@ defmodule Jetstream.PullConsumer do
   * `:connection_retry_timeout` - a duration in milliseconds after which the PullConsumer which failed to
     establish NATS connection retries. Defaults to `1_000`.
   * `:connection_retries` - a number of attempts the PullConsumer will make to establish the NATS connection.
-    When this value is exceeded, the PullConsumer stops with the `:timeout` reason.
+    When this value is exceeded, the pull consumer stops with the `:timeout` reason.
 
   The settings can be passed either as a map or as a keyword list.
   """
