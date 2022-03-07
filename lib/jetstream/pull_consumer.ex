@@ -45,7 +45,20 @@ defmodule Jetstream.PullConsumer do
   end
   ```
 
-  Note that the stream and its consumer, which names were given, must exist.
+  The following settings must be provided:
+
+  * `:connection_name` - Gnat connection or `Gnat.ConnectionSupervisor` name/PID
+  * `:stream_name` - name of an existing string the consumer will consume messages from.
+  * `:consumer_name` - name of an existing consumer pointing at the stream.
+
+  You can also pass the optional ones:
+
+  * `:connection_retry_timeout` - a duration in milliseconds after which the PullConsumer which failed to
+    establish NATS connection retries. Defaults to `1_000`.
+  * `:connection_retreis` - a number of attempts the PullConsumer will make to establish the NATS connection.
+    When this value is exceeded, the PullConsumer stops with the `:timeout` reason.
+
+  The settings can be passed both as a map and as a keyword list.
   """
 
   use Connection
@@ -69,21 +82,7 @@ defmodule Jetstream.PullConsumer do
   @callback handle_message(message :: Jetstream.message()) ::
               :ack | :nack | :noreply
 
-  @type settings ::
-          %{
-            :connection_name => GenServer.server(),
-            :stream_name => binary(),
-            :consumer_name => binary(),
-            optional(:connection_retry_timeout) => pos_integer(),
-            optional(:connection_retries) => pos_integer()
-          }
-          | [
-              connection_name: GenServer.server(),
-              stream_name: binary(),
-              consumer_name: binary(),
-              connection_retry_timeout: pos_integer(),
-              connection_retries: pos_integer()
-            ]
+  @type settings :: Keyword.t() | map()
 
   defmacro __using__(_opts) do
     quote do
