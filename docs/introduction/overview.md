@@ -8,4 +8,6 @@ or later replay for processing.
 This library exposes interfaces for publishing, consuming and managing Jetstream services. It builds
 on top of [Gnat](https://hex.pm/packages/gnat), the officially supported Elixir client for NATS.
 
-[Let's get Jetstream up and running](./getting_started.md).
+* [Let's get Jetstream up and running](./getting_started.md)
+* [Pull Consumer API](`Jetstream.PullConsumer`)
+* [Create, update and delete Jetstream streams and consumers via Elixir](../guides/managing.md)
