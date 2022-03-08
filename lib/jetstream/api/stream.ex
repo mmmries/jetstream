@@ -13,65 +13,44 @@ defmodule Jetstream.API.Stream do
 
   * `:allow_rollup_hdrs` - allows the use of the Nats-Rollup header to replace all contents of a stream,
     or subject in a stream, with a single new message.
-
   * `:deny_delete` - restricts the ability to delete messages from a stream via the API. Cannot be changed
     once set to true.
-
   * `:deny_purge` - restricts the ability to purge messages from a stream via the API. Cannot be change
     once set to true.
-
   * `:description` - a short description of the purpose of this stream.
-
   * `:discard` - determines what happens when a Stream reaches its limits. It has the following options:
      - `:old` - the default option. Old messages are deleted.
      - `:new` - refuses new messages.
-
   * `:duplicate_window` - the window within which to track duplicate messages, expressed in nanoseconds.
-
   * `:max_age` - maximum age of any message in the Stream, expressed in nanoseconds.
-
   * `:max_bytes` - how many bytes the Stream may contain. Adheres to `:discard`, removing oldest or
     refusing new messages if the Stream exceeds this size.
-
   * `:max_consumers` - how many Consumers can be defined for a given Stream, -1 for unlimited.
-
   * `:max_msg_size` - the largest message that will be accepted by the Stream.
-
   * `:max_msgs` - how many messages may be in a Stream. Adheres to `:discard`, removing oldest or refusing
     new messages if the Stream exceeds this number of messages
-
   * `:mirror` - maintains a 1:1 mirror of another stream with name matching this property.  When a mirror
     is configured subjects and sources must be empty.
-
   * `:name` - a name for the Stream.
     See [naming](https://docs.nats.io/running-a-nats-service/nats_admin/jetstream_admin/naming).
-
   * `:no_ack` - disables acknowledging messages that are received by the Stream.
-
   * `:num_replicas` - how many replicas to keep for each message.
-
   * `:placement` - placement directives to consider when placing replicas of this stream, random placement
     when unset. It has the following properties:
      - `:cluster` - the desired cluster name to place the stream.
      - `:tags` - tags required on servers hosting this stream.
-
   * `:retention` - how messages are retained in the Stream. Once this is exceeded, old messages are removed.
     It has the following options:
      - `:limits` - the default policy.
      - `:interest`
      - `:workqueue`
-
   * `:sealed` - sealed streams do not allow messages to be deleted via limits or API, sealed streams can not
     be unsealed via configuration update. Can only be set on already created streams via the Update API.
-
   * `:sources` - list of stream names to replicate into this stream.
-
   * `:storage` - the type of storage backend. Available options:
      - `:file`
      - `:memory`
-
   * `:subjects` - a list of subjects to consume, supports wildcards.
-
   * `:template_owner` - when the Stream is managed by a Stream Template this identifies the template that
     manages the Stream.
   """
@@ -142,13 +121,9 @@ defmodule Jetstream.API.Stream do
   Stream source fields explained:
 
   * `:name` - stream name.
-
   * `:opt_start_seq` - sequence to start replicating from.
-
   * `:opt_start_time` - timestamp to start replicating from.
-
   * `:filter_subject` - replicate only a subset of messages based on filter.
-
   * `:external` - configuration referencing a stream source in another account or JetStream domain.
     It has the following parameters:
      - `:api` - the subject prefix that imports other account/domain `$JS.API.CONSUMER.>` subjects
