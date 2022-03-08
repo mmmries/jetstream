@@ -5,7 +5,7 @@ defmodule Jetstream.PullConsumer do
   When a Consumer is pull-based, it means that the messages will be delivered when the server is asked
   for them.
 
-  ## Usage
+  ## Example
 
   Declare a module which uses `Jetstream.PullConsumer` and implements the `handle_message/1` function.
 
@@ -13,6 +13,7 @@ defmodule Jetstream.PullConsumer do
   defmodule MyApp.PullConsumer do
     use Jetstream.PullConsumer
 
+    @impl true
     def handle_message(message) do
       # Do some processing with the message.
       :ack
@@ -45,7 +46,9 @@ defmodule Jetstream.PullConsumer do
   end
   ```
 
-  The following settings must be provided:
+  ## Settings
+
+  Following settings **must** be provided:
 
   * `:connection_name` - Gnat connection or `Gnat.ConnectionSupervisor` name/PID.
   * `:stream_name` - name of an existing string the consumer will consume messages from.
@@ -58,7 +61,7 @@ defmodule Jetstream.PullConsumer do
   * `:connection_retries` - a number of attempts the PullConsumer will make to establish the NATS connection.
     When this value is exceeded, the pull consumer stops with the `:timeout` reason.
 
-  The settings can be passed either as a map or as a keyword list.
+  Settings can be passed either as a map or as a keyword list.
   """
 
   use Connection
@@ -69,18 +72,32 @@ defmodule Jetstream.PullConsumer do
   Called when the Pull Consumer recives a message. Depending on the value it returns, the acknowledgement
   is or is not sent.
 
+  ## Return values
+
   Possible return values explained:
 
-  * `:ack` - acknowledges the message was handled and requests delivery of the next message to the reply
-    subject.
+  * `:ack` - acknowledges the message was handled and requests delivery of the next message to
+    the reply subject.
+  * `:nack` - signals that the message will not be processed now and processing can move onto
+    the next message, NAK'd message will be retried.
+  * `:noreply` - nothing is sent. You may send later asynchronously an ACK or NACK message using
+    the `Jetstream.ack/1` or `Jetstream.nack/1` functions.
 
-  * `:nack` - signals that the message will not be processed now and processing can move onto the next
-    message, NAK'd message will be retried.
+  ## Example
 
-  * `:noreply` - nothing is sent.
+      def handle_message(message) do
+        IO.inspect(message)
+        :ack
+      end
+
   """
   @callback handle_message(message :: Jetstream.message()) ::
               :ack | :nack | :noreply
+
+  @typedoc """
+  The pull consumer reference.
+  """
+  @type consumer :: GenServer.server()
 
   @type settings :: Keyword.t() | map()
 
@@ -90,11 +107,12 @@ defmodule Jetstream.PullConsumer do
 
       @doc """
       Returns a specification to start this module under a supervisor.
-      See `Supervisor`.
+
+      See the "Child specification" section in the `Supervisor` module for more detailed information.
       """
-      @spec child_spec(init_arg :: Jetstream.PullConsumer.settings()) :: Supervisor.child_spec()
-      def child_spec(init_arg) do
-        Jetstream.PullConsumer.child_spec(__MODULE__, init_arg)
+      @spec child_spec(arg :: Jetstream.PullConsumer.settings()) :: Supervisor.child_spec()
+      def child_spec(arg) do
+        Jetstream.PullConsumer.child_spec(__MODULE__, arg)
       end
 
       @spec close(pull_consumer :: GenServer.server()) :: :ok
@@ -107,8 +125,12 @@ defmodule Jetstream.PullConsumer do
     end
   end
 
-  @spec start_link(module :: module(), settings :: settings(), options :: GenServer.options()) ::
-          GenServer.on_start()
+  @doc false
+  @spec start_link(
+          module :: module(),
+          settings :: settings(),
+          options :: GenServer.options()
+        ) :: GenServer.on_start()
   def start_link(module, settings, options \\ []) do
     state = %{
       settings: Map.new(settings),
@@ -118,24 +140,32 @@ defmodule Jetstream.PullConsumer do
     Connection.start_link(__MODULE__, state, options)
   end
 
-  @spec child_spec(module :: module(), init_arg :: settings()) :: Supervisor.child_spec()
-  def child_spec(module, init_arg) do
+  @doc false
+  @spec child_spec(module :: module(), arg :: settings()) :: Supervisor.child_spec()
+  def child_spec(module, arg) do
     %{
       id: __MODULE__,
-      start:
-        {__MODULE__, :start_link,
-         [
-           module,
-           init_arg
-         ]}
+      start: {__MODULE__, :start_link, [module, arg]}
     }
   end
 
   @doc """
-  Closes the NATS connection and stops the Pull Consumer.
+  Closes the pull consumer and stops underlying process.
+
+  ## Example
+
+      {:ok, consumer} =
+        PullConsumer.start_link(ExamplePullConsumer,
+          connection_name: :gnat,
+          stream_name: "TEST_STREAM",
+          consumer_name: "TEST_CONSUMER"
+        )
+
+      :ok = PullConsumer.close(consumer)
+
   """
-  @spec close(ref :: GenServer.server()) :: :ok
-  def close(ref), do: Connection.call(ref, :close)
+  @spec close(consumer :: consumer()) :: :ok
+  def close(consumer), do: Connection.call(consumer, :close)
 
   def init(%{
         settings: settings,
