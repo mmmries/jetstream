@@ -133,7 +133,7 @@ end
 
 This defines a gen server-style module which bases on `Jetstream.PullConsumer` behavior. The only
 required callback is `c:Jetstream.PullConsumer.handle_message/1`, which takes new message as its
-only argument and is expected to an atom instructing underlying process loop what to do with this
+only argument and is expected to return an atom instructing underlying process loop what to do with this
 message. Here we are asking it to automatically send for us an ACK message back to Jetstream.
 
 Let's now create a consumer in our NATS server. We will call it `LOGGER` as we plan to let it simply
