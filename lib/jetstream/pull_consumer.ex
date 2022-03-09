@@ -97,13 +97,7 @@ defmodule Jetstream.PullConsumer do
         Jetstream.PullConsumer.child_spec(__MODULE__, init_arg)
       end
 
-      @spec close(pull_consumer :: GenServer.server()) :: :ok
-      def close(pull_consumer) do
-        Jetstream.PullConsumer.close(pull_consumer)
-      end
-
-      defoverridable child_spec: 1,
-                     close: 1
+      defoverridable child_spec: 1
     end
   end
 

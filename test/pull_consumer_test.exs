@@ -108,7 +108,7 @@ defmodule Jetstream.PullConsumerTest do
 
       ref = Process.monitor(pid)
 
-      assert :ok = ExamplePullConsumer.close(pid)
+      assert :ok = Jetstream.PullConsumer.close(pid)
 
       assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
     end
