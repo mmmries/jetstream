@@ -1,9 +1,12 @@
+# Push based consumer
+
+```elixir
 # Start a nats server with jetstream enabled and default configs
 # Now run the following snippets in an IEx terminal
 alias Jetstream.API.{Consumer,Stream}
 
 # Setup a connection to the nats server and create the stream/consumer
-# This is the equivalen of these two nats cli commands
+# This is the equivalent of these two nats cli commands
 #   nats stream add TEST --subjects="greetings" --max-msgs=-1 --max-msg-size=-1 --max-bytes=-1 --max-age=-1 --storage=file --retention=limits --discard=old
 #   nats consumer add TEST TEST --target consumer.greetings --replay instant --deliver=all --ack all --wait=5s --filter="" --max-deliver=10
 {:ok, connection} = Gnat.start_link()
@@ -45,3 +48,4 @@ end
 Gnat.pub(:gnat, "greetings", "hello") # no ack will be sent back, so you'll see this message received 10 times with a 5sec pause between each one
 Gnat.pub(:gnat, "greetings", "hola") # an ack is sent back so this will only be received once
 Gnat.pub(:gnat, "greetings", "bom dia") # a -NAK is sent back so you'll see this received 10 times very quickly
+```

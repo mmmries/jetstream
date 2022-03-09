@@ -8,32 +8,18 @@
 [![Last Updated](https://img.shields.io/github/last-commit/mmmries/jetstream.svg)](https://github.com/mmmries/jetstream/commits/master)
 
 A library for interacting with NATS [Jetstream](https://github.com/nats-io/jetstream) from Elixir.
-This library builds on to of [gnat](https://hex.pm/packages/gnat), the officially supported Elixir client for NATS.
-
-## Installation
-
-The package can be installed by adding `jetstream` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [{:jetstream, "~> 0.0.1-pre2"}]
-end
-```
-
-## Introduction
-
-There are 3 primary use-cases supported in this library:
-
-1) [Managing Streams and Consumers](MANAGING.md)
-2) Publishing messages safely
-3) Acting as a consumer
+This library builds on top of [gnat](https://hex.pm/packages/gnat), the officially supported Elixir
+client for NATS.
 
 ## Development
 
-The test suite of this project is designed to interact with a live jetstream/NATS server.
-You can start one easily with this command: `docker-compose up`
+The test suite of this project is designed to interact with a live NATS/Jetstream server.
+You can start tests easily with these commands:
 
-Or you can do `docker-compose up --no-start` and then use `docker-compose start` and `docker-compose stop` to start and stop the server.
+```shell
+docker compose up -d
+mix test
+```
 
 ## License
 

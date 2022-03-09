@@ -1,4 +1,4 @@
-## Managing Streams and Consumers
+# Managing Streams and Consumers
 
 Jetstream provides a JSON API for managing streams and consumers.
 This library exposes this API via interactions with the `Jetstream.Api.Stream` and `Jetstream.Api.Consumer` modules.

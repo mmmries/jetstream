@@ -1,9 +1,7 @@
 defmodule Jetstream do
   @moduledoc """
-  Provides functions for interacting with a [NATS Jetstream](https://github.com/nats-io/jetstream) server.
-
-  > Note: Jetstream is currently considered a beta feature of the NATS project, it is not available by default.
-  > Any APIs you see here are liable to change in a way that is outside the normal versioning scheme.
+  Provides functions for interacting with a [NATS Jetstream](https://github.com/nats-io/jetstream)
+  server.
   """
 
   @type message :: Gnat.message()
@@ -12,6 +10,8 @@ defmodule Jetstream do
   Acknowledges a message was completely handled.
   """
   @spec ack(message :: message()) :: :ok
+  def ack(message)
+
   def ack(%{gnat: gnat, reply_to: reply_to}) do
     Gnat.pub(gnat, reply_to, "")
   end
@@ -21,6 +21,8 @@ defmodule Jetstream do
   to Pull-mode.
   """
   @spec ack_next(message :: message(), consumer_subject :: binary()) :: :ok
+  def ack_next(message, consumer_subject)
+
   def ack_next(%{gnat: gnat, reply_to: reply_to}, consumer_subject) do
     Gnat.pub(gnat, reply_to, "+NXT", reply_to: consumer_subject)
   end
@@ -30,6 +32,8 @@ defmodule Jetstream do
   will be retried.
   """
   @spec nack(message :: message()) :: :ok
+  def nack(message)
+
   def nack(%{gnat: gnat, reply_to: reply_to}) do
     Gnat.pub(gnat, reply_to, "-NAK")
   end

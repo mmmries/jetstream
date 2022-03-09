@@ -14,22 +14,17 @@ defmodule Jetstream.API.Consumer do
   Consumer struct fields explanation:
 
   * `:stream_name` - name of a stream the consumer is pointing at.
-
   * `:ack_policy` - how the messages should be acknowledged. It has the following options:
       - `:explicit` - the default policy. It means that each individual message must be acknowledged.
         It is the only allowed option for pull consumers.
       - `:none` - no need to ack messages, the server will assume ack on delivery.
       - `:all` - only the last received message needs to be acked, all the previous messages received
         are automatically acknowledged.
-
   * `:ack_wait` - time in nanoseconds that server will wait for an ack for any individual. If an ack
      is not received in time, the message will be redelivered.
-
   * `:backoff` - list of durations that represents a retry timescale for NAK'd messages or those being
      normally retried.
-
   * `:deliver_group` - when set, will only deliver messages to subscriptions matching that group.
-
   * `:deliver_policy` - specifies where in the stream it wants to start receiving messages. It has the
      following options:
        - `:all` - the default policy. The consumer will start receiving from the earliest available
@@ -44,65 +39,47 @@ defmodule Jetstream.API.Consumer do
          required to specify `:opt_start_time`, the time in the stream to start at.
        - `:last_per_subject` - the consumer will start with the latest one for each filtered subject
          currently  in the stream.
-
   * `:deliver_subject` - the subject to deliver observed messages. Not allowed for pull subscriptions.
     A delivery subject is required for queue subscribing as it configures a subject that all the queue
     consumers should listen on.
-
   * `:description` - a short description of the purpose of this customer.
-
   * `:durable_name` - the name of the consumer, which the server will track, allowing resuming consumption
     where left off. By default, a consumer is ephemeral. To make the consumer durable, set the name.
     See [naming](https://docs.nats.io/running-a-nats-service/nats_admin/jetstream_admin/naming).
-
   * `:filter_subject` - when consuming from a stream with a wildcard subject, this allows you to select
     a subset of the full wildcard subject to receive messages from.
-
   * `:flow_control` - when set to true, an empty message with Status header 100 and a reply subject will
     be sent. Consumers must reply to these messages to control the rate of message delivery.
-
   * `:headers_only` - delivers only the headers of messages in the stream and not the bodies. Additionally
     adds the Nats-Msg-Size header to indicate the size of the removed payload.
-
   * `:idle_heartbeat` - if set, the server will regularly send a status message to the client while there
     are  no new messages to send. This lets the client know that the JetStream service is still up and
     running, even when there is no activity on the stream. The message status header will have a code of 100.
     Unlike `:flow_control`, it will have no reply to address. It may have a description like
     "Idle Heartbeat".
-
   * `:inactive_threshold` - duration that instructs the server to clean up ephemeral consumers that are
     inactive for that long.
-
   * `:max_ack_pending` - it sets the maximum number of messages without an acknowledgement that can be
     outstanding, once this limit is reached, message delivery will be suspended. It cannot be used with
     `:ack_none` ack policy. This maximum number of pending acks applies for all the consumer's
     subscriber processes. A value of -1 means there can be any number of pending acks (i.e. no flow
     control).
-
   * `:max_batch` - the largest batch property that may be specified when doing a pull on a Pull consumer.
-
   * `:max_deliver` - the maximum number of times a specific message will be delivered. Applies to any
     message that is re-sent due to ack policy.
-
   * `:max_expires` - the maximum expires value that may be set when doing a pull on a Pull consumer.
-
   * `:max_waiting` - the number of pulls that can be outstanding on a pull consumer, pulls received after
     this is reached are ignored.
-
   * `:opt_start_seq` - use with `:deliver_policy` set to `:by_start_sequence`. It represents the sequence
     number to start consuming on.
-
   * `:opt_start_time` - use with `:deliver_policy` set to `:by_start_time`. It represents the time to start
     consuming at.
-
   * `:rate_limit_bps` - used to throttle the delivery of messages to the consumer, in bits per second.
-
   * `:replay_policy` - it applies when the `:deliver_policy` is set to `:all`, `:by_start_sequence` or
     `:by_start_time`. It has the following options:
        - `:instant` - the default policy. The messages will be pushed to the client as fast as possible.
        - `:original` - the messages in the stream will be pushed to the client at the same rate that they
          were originally received.
-
   * `:sample_freq` - Sets the percentage of acknowledgements that should be sampled for observability, 0-100.
     This value is a binary and for example allows both `30` and `30%` as valid values.
   """

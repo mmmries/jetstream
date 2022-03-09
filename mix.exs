@@ -1,18 +1,19 @@
 defmodule Jetstream.MixProject do
   use Mix.Project
 
+  @version "0.0.1-pre2"
+  @github "https://github.com/mmmries/jetstream"
+
   def project do
     [
       app: :jetstream,
-      version: "0.0.1-pre2",
+      version: @version,
       elixir: "~> 1.10",
+      source_url: @github,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      docs: [
-        main: "readme",
-        extras: ["README.md", "MANAGING.md"]
-      ]
+      docs: docs()
     ]
   end
 
@@ -38,7 +39,7 @@ defmodule Jetstream.MixProject do
       description: "A Jetstream client in pure Elixir.",
       licenses: ["Apache-2.0"],
       links: %{
-        "GitHub" => "https://github.com/mmmries/jetstream"
+        "GitHub" => @github
       },
       maintainers: [
         "Michael Ries",
@@ -46,6 +47,23 @@ defmodule Jetstream.MixProject do
         "Marek Kaput",
         "Szymon Świerk",
         "Mariusz Morawski"
+      ]
+    ]
+  end
+
+  defp docs do
+    [
+      main: "overview",
+      source_ref: "v#{@version}",
+      extras: [
+        "docs/introduction/overview.md",
+        "docs/introduction/getting_started.md",
+        "docs/guides/managing.md",
+        "docs/guides/push_based_consumer.md"
+      ],
+      groups_for_extras: [
+        Introduction: ~r/docs\/introduction\/[^\/]+\.md/,
+        Guides: ~r/docs\/guides\/[^\/]+\.md/
       ]
     ]
   end
