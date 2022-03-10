@@ -123,10 +123,7 @@ Let's create a pull consumer module within our application at
 
 ```elixir
 defmodule HelloJetstream.LoggerPullConsumer do
-  use Jetstream.PullConsumer,
-    connection_name: :gnat,
-    stream_name: "HELLO",
-    consumer_name: "LOGGER"
+  use Jetstream.PullConsumer
 
   def start_link([]) do
     Jetstream.PullConsumer.start_link(__MODULE__, [])
@@ -134,7 +131,7 @@ defmodule HelloJetstream.LoggerPullConsumer do
 
   @impl true
   def init([]) do
-    {:ok, nil}
+    {:ok, nil, connection_name: :gnat, stream_name: "HELLO", consumer_name: "LOGGER"}
   end
 
   @impl true
@@ -147,8 +144,8 @@ end
 
 Pull Consumer is a regular `GenServer` and it takes a reference to `Gnat.ConnectionSupervisor`
 along with names of Jetstream stream and consumer as options passed to
-`Jetstream.PullConsumer.start*` functions. For brevity, if you statically know the values of these
-options, you can pass these to the `use Jetstream.PullConsumer` invocation.
+`Jetstream.PullConsumer.start*` functions. These options are passed as keyword list in third element
+of tuple returned from the `c:Jetstream.PullConsumer.init/1` callback.
 
 The only required callbacks are well known gen server's `c:Jetstream.PullConsumer.init/1` and
 `c:Jetstream.PullConsumer.handle_message/2`, which takes new message as its first argument and

@@ -11,10 +11,7 @@ defmodule Jetstream.PullConsumer do
   `c:handle_message/2` callbacks.
 
       defmodule MyApp.PullConsumer do
-        use Jetstream.PullConsumer,
-          connection_name: :gnat,
-          stream_name: "TEST_STREAM",
-          consumer_name: "TEST_CONSUMER"
+        use Jetstream.PullConsumer
 
         def start_link(arg) do
           Jetstream.PullConsumer.start_link(__MODULE__, arg)
@@ -22,7 +19,10 @@ defmodule Jetstream.PullConsumer do
 
         @impl true
         def init(_arg) do
-          {:ok, nil}
+          {:ok, nil,
+            connection_name: :gnat,
+            stream_name: "TEST_STREAM",
+            consumer_name: "TEST_CONSUMER"}
         end
 
         @impl true
@@ -51,10 +51,10 @@ defmodule Jetstream.PullConsumer do
         end
       end
 
-  ## Options
+  ## Connection Options
 
-  On top of standard `GenServer` options passed to `start*` functions, this module adds several
-  new options which you have to consider.
+  In order to establish consumer connection with NATS, you need to pass several connection options
+  via keyword list in third element of a tuple returned from `c:init/1` callback.
 
   Following options **must** be provided. Omitting this options will cause the process to raise
   errors upon initialization:
@@ -71,20 +71,25 @@ defmodule Jetstream.PullConsumer do
     connection. When this value is exceeded, the pull consumer stops with the `:timeout` reason,
     defaults to `10`
 
-  ## Dynamic Options
+  ## Dynamic Connection Options
 
-  It is possible that business case requires determining some of the options dynamically depending
-  on pull consumer's init argument. To do so, one could pass dynamic options as third argument
-  to the `start_link/3` function:
+  It is possible that you have to determine some of the options dynamically depending on pull
+  consumer's init argument. To do so, it is recommended to derive these options values from some
+  init argument:
 
       defmodule MyApp.PullConsumer do
-        use Jetstream.PullConsumer, connection_name: :gnat
+        use Jetstream.PullConsumer
 
-        def start_link(%{counter: counter}) do
-          Jetstream.PullConsumer.start_link(__MODULE__, arg,
+        def start_link() do
+          Jetstream.PullConsumer.start_link(__MODULE__, %{counter: counter})
+        end
+
+        @impl true
+        def init(%{counter: counter}) do
+          {:ok, nil,
+            connection_name: :gnat,
             stream_name: "TEST_STREAM_#\{counter}",
-            consumer_name: "TEST_CONSUMER_#\{counter}"
-          )
+            consumer_name: "TEST_CONSUMER_#\{counter}"}
         end
 
         ...
@@ -150,7 +155,7 @@ defmodule Jetstream.PullConsumer do
   See `c:Connection.init/1` for more details.
   """
   @callback init(init_arg :: term) ::
-              {:ok, state :: term()}
+              {:ok, state :: term(), connection_options :: connection_options()}
               | :ignore
               | {:stop, reason :: any}
 
@@ -187,20 +192,19 @@ defmodule Jetstream.PullConsumer do
   @type consumer :: GenServer.server()
 
   @typedoc """
-  Option values used by the `start*` functions.
+  Connection option values used to connect the consumer to NATS server.
   """
-  @type option ::
+  @type connection_option ::
           {:connection_name, GenServer.server()}
           | {:stream_name, String.t()}
           | {:consumer_name, String.t()}
           | {:connection_retry_timeout, non_neg_integer()}
           | {:connection_retries, non_neg_integer()}
-          | GenServer.option()
 
   @typedoc """
-  Options used by the `start*` functions.
+  Connection options used to connect the consumer to NATS server.
   """
-  @type options :: [option()]
+  @type connection_options :: [connection_option()]
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -215,7 +219,7 @@ defmodule Jetstream.PullConsumer do
         """
       end
 
-      @spec child_spec(arg :: Jetstream.PullConsumer.options()) :: Supervisor.child_spec()
+      @spec child_spec(arg :: GenServer.options()) :: Supervisor.child_spec()
       def child_spec(arg) do
         default = %{
           id: __MODULE__,
@@ -240,9 +244,14 @@ defmodule Jetstream.PullConsumer do
 
   See `GenServer.start_link/3` for more details.
   """
-  @spec start_link(module(), init_arg :: term(), options()) :: GenServer.on_start()
+  @spec start_link(module(), init_arg :: term(), options :: GenServer.options()) ::
+          GenServer.on_start()
   def start_link(module, init_arg, options \\ []) when is_atom(module) and is_list(options) do
-    do_start(:link, module, init_arg, options)
+    Connection.start_link(
+      Jetstream.PullConsumer.Server,
+      %{module: module, init_arg: init_arg},
+      options
+    )
   end
 
   @doc """
@@ -250,55 +259,14 @@ defmodule Jetstream.PullConsumer do
 
   See `start_link/3` for more information.
   """
-  @spec start(module(), init_arg :: term(), options()) :: GenServer.on_start()
+  @spec start(module(), init_arg :: term(), options :: GenServer.options()) ::
+          GenServer.on_start()
   def start(module, init_arg, options \\ []) when is_atom(module) and is_list(options) do
-    do_start(:nolink, module, init_arg, options)
-  end
-
-  defp do_start(link, module, init_arg, gen_options) do
-    {options, gen_options} = pop_options!(gen_options)
-
-    init_arg = %{module: module, init_arg: init_arg, options: options}
-
-    case link do
-      :nolink -> Connection.start(Jetstream.PullConsumer.Server, init_arg, gen_options)
-      :link -> Connection.start_link(Jetstream.PullConsumer.Server, init_arg, gen_options)
-    end
-  end
-
-  defmacrop require_option!(name, value) do
-    quote location: :keep, bind_quoted: [name: name, value: value] do
-      case value do
-        nil -> raise "Required Jetstream PullConsumer option #{inspect(name)} is missing."
-        value -> value
-      end
-    end
-  end
-
-  defp pop_options!(gen_options) do
-    {connection_name, gen_options} = Keyword.pop(gen_options, :connection_name, nil)
-    require_option!(:connection_name, connection_name)
-
-    {stream_name, gen_options} = Keyword.pop(gen_options, :stream_name, nil)
-    require_option!(:stream_name, stream_name)
-
-    {consumer_name, gen_options} = Keyword.pop(gen_options, :consumer_name, nil)
-    require_option!(:consumer_name, consumer_name)
-
-    {connection_retry_timeout, gen_options} =
-      Keyword.pop(gen_options, :connection_retry_timeout, 1000)
-
-    {connection_retries, gen_options} = Keyword.pop(gen_options, :connection_retries, 10)
-
-    options = %{
-      connection_name: connection_name,
-      stream_name: stream_name,
-      consumer_name: consumer_name,
-      connection_retry_timeout: connection_retry_timeout,
-      connection_retries: connection_retries
-    }
-
-    {options, gen_options}
+    Connection.start(
+      Jetstream.PullConsumer.Server,
+      %{module: module, init_arg: init_arg},
+      options
+    )
   end
 
   @doc """
