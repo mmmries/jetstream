@@ -208,46 +208,79 @@ defmodule Jetstream.PullConsumer.Server do
     end
   end
 
-  def handle_info({:EXIT, _pid, _reason}, gen_state) do
+  def handle_info(
+        {:EXIT, _pid, _reason},
+        %{
+          connection_options: %ConnectionOptions{
+            connection_name: connection_name,
+            stream_name: stream_name,
+            consumer_name: consumer_name
+          },
+          subscription_id: subscription_id,
+          listening_topic: listening_topic,
+          module: module
+        } = gen_state
+      ) do
     Logger.debug(
       """
-      #{__MODULE__} for #{gen_state.connection_options.stream_name}.#{gen_state.connection_options.consumer_name}: \
+      #{__MODULE__} for #{stream_name}.#{consumer_name}:
       NATS connection has died. PullConsumer is reconnecting.
       """,
-      module: gen_state.module,
-      listening_topic: gen_state.listening_topic,
-      subscription_id: gen_state.subscription_id,
-      connection_name: gen_state.connection_options.connection_name
+      module: module,
+      listening_topic: listening_topic,
+      subscription_id: subscription_id,
+      connection_name: connection_name
     )
 
     {:connect, :reconnect, gen_state}
   end
 
-  def handle_info(other, gen_state) do
+  def handle_info(
+        other,
+        %{
+          connection_options: %ConnectionOptions{
+            connection_name: connection_name,
+            stream_name: stream_name,
+            consumer_name: consumer_name
+          },
+          subscription_id: subscription_id,
+          listening_topic: listening_topic,
+          module: module
+        } = gen_state
+      ) do
     Logger.debug(
       """
-      #{__MODULE__} for #{gen_state.connection_options.stream_name}.#{gen_state.connection_options.consumer_name} received \
+      #{__MODULE__} for #{stream_name}.#{consumer_name} received
       unexpected message: #{inspect(other, pretty: true)}
       """,
-      module: gen_state.module,
-      listening_topic: gen_state.listening_topic,
-      subscription_id: gen_state.subscription_id,
-      connection_name: gen_state.connection_options.connection_name
+      module: module,
+      listening_topic: listening_topic,
+      subscription_id: subscription_id,
+      connection_name: connection_name
     )
 
     {:noreply, gen_state}
   end
 
-  def handle_call(:close, from, gen_state) do
-    Logger.debug(
-      """
-      #{__MODULE__} for #{gen_state.connection_options.stream_name}.#{gen_state.connection_options.consumer_name} received \
-      :close call.
-      """,
-      module: gen_state.module,
-      listening_topic: gen_state.listening_topic,
-      subscription_id: gen_state.subscription_id,
-      connection_name: gen_state.connection_options.connection_name
+  def handle_call(
+        :close,
+        from,
+        %{
+          connection_options: %ConnectionOptions{
+            connection_name: connection_name,
+            stream_name: stream_name,
+            consumer_name: consumer_name
+          },
+          subscription_id: subscription_id,
+          listening_topic: listening_topic,
+          module: module
+        } = gen_state
+      ) do
+    Logger.debug("#{__MODULE__} for #{stream_name}.#{consumer_name} received :close call.",
+      module: module,
+      listening_topic: listening_topic,
+      subscription_id: subscription_id,
+      connection_name: connection_name
     )
 
     {:disconnect, {:close, from}, gen_state}
