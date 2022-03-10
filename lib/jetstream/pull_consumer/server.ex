@@ -7,6 +7,15 @@ defmodule Jetstream.PullConsumer.Server do
 
   alias Jetstream.PullConsumer.ConnectionOptions
 
+  defstruct [
+    :connection_options,
+    :state,
+    :listening_topic,
+    :module,
+    :subscription_id,
+    current_retry: 0
+  ]
+
   def init(%{module: module, init_arg: init_arg}) do
     _ = Process.put(:"$initial_call", {module, :init, 1})
 
@@ -16,7 +25,7 @@ defmodule Jetstream.PullConsumer.Server do
 
         connection_options = ConnectionOptions.validate!(connection_options)
 
-        gen_state = %{
+        gen_state = %__MODULE__{
           connection_options: connection_options,
           state: state,
           listening_topic: new_listening_topic(),
@@ -43,7 +52,7 @@ defmodule Jetstream.PullConsumer.Server do
 
   def connect(
         _,
-        %{
+        %__MODULE__{
           connection_options: %ConnectionOptions{
             stream_name: stream_name,
             consumer_name: consumer_name,
@@ -65,13 +74,13 @@ defmodule Jetstream.PullConsumer.Server do
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
          {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
-         gen_state = Map.put(gen_state, :subscription_id, sid),
+         gen_state = %{gen_state | subscription_id: sid},
          :ok <- next_message(conn, stream_name, consumer_name, listening_topic),
-         gen_state = Map.delete(gen_state, :current_retry) do
+         gen_state = %{gen_state | current_retry: 0} do
       {:ok, gen_state}
     else
       {:error, reason} ->
-        if Map.get(gen_state, :current_retry, 0) >= connection_retries do
+        if gen_state.current_retry >= connection_retries do
           Logger.error(
             """
             #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to NATS and \
@@ -82,7 +91,7 @@ defmodule Jetstream.PullConsumer.Server do
             connection_name: connection_name
           )
 
-          {:stop, :timeout, Map.delete(gen_state, :current_retry)}
+          {:stop, :timeout, %{gen_state | current_retry: 0}}
         else
           Logger.debug(
             """
@@ -94,7 +103,7 @@ defmodule Jetstream.PullConsumer.Server do
             connection_name: connection_name
           )
 
-          gen_state = Map.update(gen_state, :current_retry, 0, fn retry -> retry + 1 end)
+          gen_state = Map.update!(gen_state, :current_retry, &(&1 + 1))
           {:backoff, connection_retry_timeout, gen_state}
         end
     end
@@ -102,7 +111,7 @@ defmodule Jetstream.PullConsumer.Server do
 
   def disconnect(
         {:close, from},
-        %{
+        %__MODULE__{
           connection_options: %ConnectionOptions{
             stream_name: stream_name,
             consumer_name: consumer_name,
@@ -154,7 +163,7 @@ defmodule Jetstream.PullConsumer.Server do
 
   def handle_info(
         {:msg, message},
-        %{
+        %__MODULE__{
           connection_options: %ConnectionOptions{
             stream_name: stream_name,
             consumer_name: consumer_name,
@@ -212,7 +221,7 @@ defmodule Jetstream.PullConsumer.Server do
 
   def handle_info(
         {:EXIT, _pid, _reason},
-        %{
+        %__MODULE__{
           connection_options: %ConnectionOptions{
             connection_name: connection_name,
             stream_name: stream_name,
@@ -239,7 +248,7 @@ defmodule Jetstream.PullConsumer.Server do
 
   def handle_info(
         other,
-        %{
+        %__MODULE__{
           connection_options: %ConnectionOptions{
             connection_name: connection_name,
             stream_name: stream_name,
@@ -267,7 +276,7 @@ defmodule Jetstream.PullConsumer.Server do
   def handle_call(
         :close,
         from,
-        %{
+        %__MODULE__{
           connection_options: %ConnectionOptions{
             connection_name: connection_name,
             stream_name: stream_name,
