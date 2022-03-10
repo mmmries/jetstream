@@ -33,6 +33,10 @@ defmodule Jetstream.PullConsumer.Server do
     "_CON.#{nuid()}"
   end
 
+  defp nuid() do
+    :crypto.strong_rand_bytes(12) |> Base.encode64()
+  end
+
   def connect(
         _,
         %{
@@ -241,9 +245,5 @@ defmodule Jetstream.PullConsumer.Server do
       "1",
       reply_to: listening_topic
     )
-  end
-
-  defp nuid() do
-    :crypto.strong_rand_bytes(12) |> Base.encode64()
   end
 end
