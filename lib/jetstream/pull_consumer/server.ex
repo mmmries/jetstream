@@ -5,6 +5,8 @@ defmodule Jetstream.PullConsumer.Server do
 
   use Connection
 
+  alias Jetstream.PullConsumer.ConnectionOptions
+
   def init(%{module: module, init_arg: init_arg}) do
     _ = Process.put(:"$initial_call", {module, :init, 1})
 
@@ -12,7 +14,7 @@ defmodule Jetstream.PullConsumer.Server do
       {:ok, state, connection_options} when is_list(connection_options) ->
         Process.flag(:trap_exit, true)
 
-        connection_options = pop_connection_options!(connection_options)
+        connection_options = ConnectionOptions.validate!(connection_options)
 
         gen_state = %{
           connection_options: connection_options,
@@ -31,42 +33,6 @@ defmodule Jetstream.PullConsumer.Server do
     end
   end
 
-  defmacrop require_option!(name, value) do
-    quote location: :keep, bind_quoted: [name: name, value: value] do
-      case value do
-        nil -> raise "Required pull consumer connection option #{inspect(name)} is missing."
-        value -> value
-      end
-    end
-  end
-
-  defp pop_connection_options!(connection_options) do
-    # If we were targeting Elixir ~> 1.13, we could use Keyword.validate!/2 here.
-
-    {connection_name, connection_options} = Keyword.pop(connection_options, :connection_name)
-    require_option!(:connection_name, connection_name)
-
-    {stream_name, connection_options} = Keyword.pop(connection_options, :stream_name)
-    require_option!(:stream_name, stream_name)
-
-    {consumer_name, connection_options} = Keyword.pop(connection_options, :consumer_name)
-    require_option!(:consumer_name, consumer_name)
-
-    {connection_retry_timeout, connection_options} =
-      Keyword.pop(connection_options, :connection_retry_timeout, 1000)
-
-    {connection_retries, _connection_options} =
-      Keyword.pop(connection_options, :connection_retries, 10)
-
-    %{
-      connection_name: connection_name,
-      stream_name: stream_name,
-      consumer_name: consumer_name,
-      connection_retry_timeout: connection_retry_timeout,
-      connection_retries: connection_retries
-    }
-  end
-
   defp new_listening_topic do
     "_CON.#{nuid()}"
   end
@@ -78,7 +44,7 @@ defmodule Jetstream.PullConsumer.Server do
   def connect(
         _,
         %{
-          connection_options: %{
+          connection_options: %ConnectionOptions{
             stream_name: stream_name,
             consumer_name: consumer_name,
             connection_name: connection_name,
@@ -137,7 +103,7 @@ defmodule Jetstream.PullConsumer.Server do
   def disconnect(
         {:close, from},
         %{
-          connection_options: %{
+          connection_options: %ConnectionOptions{
             stream_name: stream_name,
             consumer_name: consumer_name,
             connection_name: connection_name
@@ -186,16 +152,27 @@ defmodule Jetstream.PullConsumer.Server do
     end
   end
 
-  def handle_info({:msg, message}, %{connection_options: connection_options, state: state, module: module} = gen_state) do
+  def handle_info(
+        {:msg, message},
+        %{
+          connection_options: %ConnectionOptions{
+            stream_name: stream_name,
+            consumer_name: consumer_name,
+            connection_name: connection_name
+          },
+          state: state,
+          module: module
+        } = gen_state
+      ) do
     Logger.debug(
       """
-      #{__MODULE__} for #{connection_options.stream_name}.#{connection_options.consumer_name} received a message: \
+      #{__MODULE__} for #{stream_name}.#{consumer_name} received a message: \
       #{inspect(message, pretty: true)}
       """,
       module: module,
       listening_topic: gen_state.listening_topic,
       subscription_id: gen_state.subscription_id,
-      connection_name: connection_options.connection_name
+      connection_name: connection_name
     )
 
     case module.handle_message(message, state) do
@@ -210,8 +187,8 @@ defmodule Jetstream.PullConsumer.Server do
 
         next_message(
           message.gnat,
-          connection_options.stream_name,
-          connection_options.consumer_name,
+          stream_name,
+          consumer_name,
           gen_state.listening_topic
         )
 
@@ -221,8 +198,8 @@ defmodule Jetstream.PullConsumer.Server do
       {:noreply, state} ->
         next_message(
           message.gnat,
-          connection_options.stream_name,
-          connection_options.consumer_name,
+          stream_name,
+          consumer_name,
           gen_state.listening_topic
         )
 

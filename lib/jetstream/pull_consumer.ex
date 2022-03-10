@@ -155,7 +155,7 @@ defmodule Jetstream.PullConsumer do
   See `c:Connection.init/1` for more details.
   """
   @callback init(init_arg :: term) ::
-              {:ok, state :: term(), connection_options :: connection_options()}
+              {:ok, state :: term(), connection_options()}
               | :ignore
               | {:stop, reason :: any}
 

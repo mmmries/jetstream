@@ -12,7 +12,7 @@ defmodule Jetstream.PullConsumerTest do
 
     @impl true
     def init(opts) do
-      {:ok, nil, Enum.concat(opts, connection_name: :gnat)}
+      {:ok, nil, Keyword.merge([connection_name: :gnat], opts)}
     end
 
     @impl true
