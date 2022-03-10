@@ -6,19 +6,31 @@ defmodule Jetstream.PullConsumerTest do
   defmodule ExamplePullConsumer do
     use Jetstream.PullConsumer
 
-    def handle_message(%{topic: "ackable"}) do
-      :ack
+    def start_link(opts) do
+      Jetstream.PullConsumer.start_link(__MODULE__, [], Keyword.new(opts))
     end
 
-    def handle_message(%{topic: "non-ackable", reply_to: reply_to}) do
+    def init(_) do
+      {:ok, 0}
+    end
+
+    def handle_message(%{topic: "ackable"}, acc) do
+      {:ack, acc + 1}
+    end
+
+    def handle_message(%{topic: "non-ackable", reply_to: reply_to}, acc) do
       [_, _, _, _, delivered_count, _, _, _, _] = String.split(reply_to, ".")
 
       # NACK on first delivery
-      if delivered_count == "1", do: :nack, else: :ack
+      if delivered_count == "1" do
+        {:nack, acc + 1}
+      else
+        {:ack, acc + 1}
+      end
     end
 
-    def handle_message(%{topic: "skippable"}) do
-      :noreply
+    def handle_message(%{topic: "skippable"}, acc) do
+      {:noreply, acc + 1}
     end
   end
 
