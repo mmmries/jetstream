@@ -31,6 +31,7 @@ nats stream add HELLO --subjects="greetings"
 ```
 
 > #### Tip {: .tip}
+>
 > You can also manage Jetstream streams and consumers via Elixir. You can see more details in
 > [this guide](../guides/managing.md).
 
@@ -113,26 +114,41 @@ to process them. This is the recommended approach for most use cases and we will
 in this guide.
 
 > #### This is just a brief outline {: .tip}
+>
 > For more details about differences between consumer modes, consult
 > [Jetstream documentation](https://docs.nats.io/nats-concepts/jetstream/consumers).
 
 Let's create a pull consumer module within our application at
-`lib/hello_jetstream/logger_pull_consumer.ex`:
+`lib/hello_jetstream/logger_pull_consumer.ex`: Pull Consumer is a regular `GenServer` and it takes
+a reference to `Gnat.ConnectionSupervisor` along with names of Jetstream stream and consumer as
+options passed to `Jetstream.PullConsumer.start*` functions. For brevity, if you statically know
+the values of these options, you can pass these to the `use Jetstream.PullConsumer` invocation.
 
 ```elixir
 defmodule HelloJetstream.LoggerPullConsumer do
-  use Jetstream.PullConsumer
+  use Jetstream.PullConsumer,
+    connection_name: :gnat,
+    stream_name: "HELLO",
+    consumer_name: "LOGGER"
+
+  def start_link([]) do
+    Jetstream.PullConsumer.start_link(__MODULE__, [])
+  end
+
+  def init([]) do
+    {:ok, nil}
+  end
 
   @impl true
-  def handle_message(message) do
+  def handle_message(message, state) do
     IO.inspect(message)
-    :ack
+    {:ack, state}
   end
 end
 ```
 
 This defines a gen server-style module which bases on `Jetstream.PullConsumer` behavior. The only
-required callback is `c:Jetstream.PullConsumer.handle_message/1`, which takes new message as its
+required callback is `c:Jetstream.PullConsumer.handle_message/2`, which takes new message as its
 only argument and is expected to return an atom instructing underlying process loop what to do with this
 message. Here we are asking it to automatically send for us an ACK message back to Jetstream.
 
@@ -143,9 +159,7 @@ log everything published to the stream.
 nats consumer add --pull --deliver=all HELLO LOGGER
 ```
 
-Now, let's start our pull consumer under application's supervision tree. Pull Consumer is a regular
-`GenServer` and it takes a reference to `Gnat.ConnectionSupervisor` along with names of Jetstream
-stream and consumer as init argument.
+Now, let's start our pull consumer under application's supervision tree.
 
 ```elixir
 def start(_type, _args) do
@@ -153,12 +167,7 @@ def start(_type, _args) do
     ...
 
     # Jetstream Pull Consumer
-    {HelloJetstream.LoggerPullConsumer,
-      %{
-        connection_name: :gnat,
-        stream_name: "HELLO",
-        consumer_name: "LOGGER"
-      }}
+    HelloJetstream.LoggerPullConsumer,
   ]
 
   ...
