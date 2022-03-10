@@ -160,6 +160,8 @@ defmodule Jetstream.PullConsumer.Server do
             consumer_name: consumer_name,
             connection_name: connection_name
           },
+          listening_topic: listening_topic,
+          subscription_id: subscription_id,
           state: state,
           module: module
         } = gen_state
@@ -170,14 +172,14 @@ defmodule Jetstream.PullConsumer.Server do
       #{inspect(message, pretty: true)}
       """,
       module: module,
-      listening_topic: gen_state.listening_topic,
-      subscription_id: gen_state.subscription_id,
+      listening_topic: listening_topic,
+      subscription_id: subscription_id,
       connection_name: connection_name
     )
 
     case module.handle_message(message, state) do
       {:ack, state} ->
-        Jetstream.ack_next(message, gen_state.listening_topic)
+        Jetstream.ack_next(message, listening_topic)
 
         gen_state = %{gen_state | state: state}
         {:noreply, gen_state}
@@ -189,7 +191,7 @@ defmodule Jetstream.PullConsumer.Server do
           message.gnat,
           stream_name,
           consumer_name,
-          gen_state.listening_topic
+          listening_topic
         )
 
         gen_state = %{gen_state | state: state}
@@ -200,7 +202,7 @@ defmodule Jetstream.PullConsumer.Server do
           message.gnat,
           stream_name,
           consumer_name,
-          gen_state.listening_topic
+          listening_topic
         )
 
         gen_state = %{gen_state | state: state}
