@@ -134,5 +134,21 @@ defmodule Jetstream.PullConsumerTest do
 
       assert_receive {:DOWN, ^ref, :process, ^pid, :timeout}, 1_000
     end
+
+    test "allows setting custom inbox prefix", %{
+      stream_name: stream_name,
+      consumer_name: consumer_name
+    } do
+      start_supervised!(
+        {ExamplePullConsumer,
+         inbox_prefix: "CUSTOM_PREFIX.", stream_name: stream_name, consumer_name: consumer_name}
+      )
+
+      Gnat.sub(:gnat, self(), "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}")
+
+      :ok = Gnat.pub(:gnat, "ackable", "hello")
+
+      assert_receive {:msg, %{body: "1", reply_to: "CUSTOM_PREFIX." <> _}}
+    end
   end
 end
