@@ -12,14 +12,14 @@ defmodule Jetstream.PullConsumer.Server do
       {:ok, state} ->
         Process.flag(:trap_exit, true)
 
-        initial_state = %{
+        gen_state = %{
           options: options,
           state: state,
           listening_topic: new_listening_topic(),
           module: module
         }
 
-        {:connect, :init, initial_state}
+        {:connect, :init, gen_state}
 
       :ignore ->
         :ignore
@@ -45,7 +45,7 @@ defmodule Jetstream.PullConsumer.Server do
           },
           listening_topic: listening_topic,
           module: module
-        } = state
+        } = gen_state
       ) do
     Logger.debug(
       "#{__MODULE__} for #{stream_name}.#{consumer_name} is connecting to Gnat.",
@@ -57,13 +57,13 @@ defmodule Jetstream.PullConsumer.Server do
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
          {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
-         state = Map.put(state, :subscription_id, sid),
+         gen_state = Map.put(gen_state, :subscription_id, sid),
          :ok <- next_message(conn, stream_name, consumer_name, listening_topic),
-         state = Map.delete(state, :current_retry) do
-      {:ok, state}
+         gen_state = Map.delete(gen_state, :current_retry) do
+      {:ok, gen_state}
     else
       {:error, reason} ->
-        if Map.get(state, :current_retry, 0) >= connection_retries do
+        if Map.get(gen_state, :current_retry, 0) >= connection_retries do
           Logger.error(
             """
             #{__MODULE__} for #{stream_name}.#{consumer_name} failed to connect to NATS and \
@@ -74,7 +74,7 @@ defmodule Jetstream.PullConsumer.Server do
             connection_name: connection_name
           )
 
-          {:stop, :timeout, Map.delete(state, :current_retry)}
+          {:stop, :timeout, Map.delete(gen_state, :current_retry)}
         else
           Logger.debug(
             """
@@ -86,8 +86,8 @@ defmodule Jetstream.PullConsumer.Server do
             connection_name: connection_name
           )
 
-          state = Map.update(state, :current_retry, 0, fn retry -> retry + 1 end)
-          {:backoff, connection_retry_timeout, state}
+          gen_state = Map.update(gen_state, :current_retry, 0, fn retry -> retry + 1 end)
+          {:backoff, connection_retry_timeout, gen_state}
         end
     end
   end
@@ -103,7 +103,7 @@ defmodule Jetstream.PullConsumer.Server do
           listening_topic: listening_topic,
           subscription_id: subscription_id,
           module: module
-        } = state
+        } = gen_state
       ) do
     Logger.debug(
       "#{__MODULE__} for #{stream_name}.#{consumer_name} is disconnecting from Gnat.",
@@ -125,7 +125,7 @@ defmodule Jetstream.PullConsumer.Server do
       )
 
       Connection.reply(from, :ok)
-      {:stop, :shutdown, state}
+      {:stop, :shutdown, gen_state}
     end
   end
 
@@ -144,23 +144,24 @@ defmodule Jetstream.PullConsumer.Server do
     end
   end
 
-  def handle_info({:msg, message}, %{options: options, module: module} = state) do
+  def handle_info({:msg, message}, %{options: options, state: state, module: module} = gen_state) do
     Logger.debug(
       """
       #{__MODULE__} for #{options.stream_name}.#{options.consumer_name} received a message: \
       #{inspect(message, pretty: true)}
       """,
       module: module,
-      listening_topic: state.listening_topic,
-      subscription_id: state.subscription_id,
+      listening_topic: gen_state.listening_topic,
+      subscription_id: gen_state.subscription_id,
       connection_name: options.connection_name
     )
 
     case module.handle_message(message, state) do
       {:ack, state} ->
-        Jetstream.ack_next(message, state.listening_topic)
+        Jetstream.ack_next(message, gen_state.listening_topic)
 
-        {:noreply, state}
+        gen_state = %{gen_state | state: state}
+        {:noreply, gen_state}
 
       {:nack, state} ->
         Jetstream.nack(message)
@@ -169,66 +170,68 @@ defmodule Jetstream.PullConsumer.Server do
           message.gnat,
           options.stream_name,
           options.consumer_name,
-          state.listening_topic
+          gen_state.listening_topic
         )
 
-        {:noreply, state}
+        gen_state = %{gen_state | state: state}
+        {:noreply, gen_state}
 
       {:noreply, state} ->
         next_message(
           message.gnat,
           options.stream_name,
           options.consumer_name,
-          state.listening_topic
+          gen_state.listening_topic
         )
 
-        {:noreply, state}
+        gen_state = %{gen_state | state: state}
+        {:noreply, gen_state}
     end
   end
 
-  def handle_info({:EXIT, _pid, _reason}, state) do
+  def handle_info({:EXIT, _pid, _reason}, gen_state) do
     Logger.debug(
       """
-      #{__MODULE__} for #{state.options.stream_name}.#{state.options.consumer_name}: \
+      #{__MODULE__} for #{gen_state.options.stream_name}.#{gen_state.options.consumer_name}: \
       NATS connection has died. PullConsumer is reconnecting.
       """,
-      module: state.module,
-      listening_topic: state.listening_topic,
-      subscription_id: state.subscription_id,
-      connection_name: state.options.connection_name
+      module: gen_state.module,
+      listening_topic: gen_state.listening_topic,
+      subscription_id: gen_state.subscription_id,
+      connection_name: gen_state.options.connection_name
     )
 
-    {:connect, :reconnect, state}
+    {:connect, :reconnect, gen_state}
   end
 
-  def handle_info(other, state) do
+  def handle_info(other, gen_state) do
     Logger.debug(
       """
-      #{__MODULE__} for #{state.options.stream_name}.#{state.options.consumer_name} received \
+      #{__MODULE__} for #{gen_state.options.stream_name}.#{gen_state.options.consumer_name} received \
       unexpected message: #{inspect(other, pretty: true)}
       """,
-      module: state.module,
-      listening_topic: state.listening_topic,
-      subscription_id: state.subscription_id,
-      connection_name: state.options.connection_name
+      module: gen_state.module,
+      listening_topic: gen_state.listening_topic,
+      subscription_id: gen_state.subscription_id,
+      connection_name: gen_state.options.connection_name
     )
 
-    {:noreply, state}
+    {:noreply, gen_state}
   end
 
-  def handle_call(:close, from, state) do
+  def handle_call(:close, from, gen_state) do
     Logger.debug(
       """
-      #{__MODULE__} for #{state.options.stream_name}.#{state.options.consumer_name} received \
+      #{__MODULE__} for #{gen_state.options.stream_name}.#{gen_state.options.consumer_name} received \
       :close call.
       """,
-      module: state.module,
-      listening_topic: state.listening_topic,
-      subscription_id: state.subscription_id,
-      connection_name: state.options.connection_name
+      module: gen_state.module,
+      listening_topic: gen_state.listening_topic,
+      subscription_id: gen_state.subscription_id,
+      connection_name: gen_state.options.connection_name
     )
 
-    {:disconnect, {:close, from}, state}
+    {:disconnect, {:close, from}, gen_state}
   end
 
   defp next_message(conn, stream_name, consumer_name, listening_topic) do
