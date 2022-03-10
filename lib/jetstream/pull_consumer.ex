@@ -20,6 +20,7 @@ defmodule Jetstream.PullConsumer do
           Jetstream.PullConsumer.start_link(__MODULE__, arg)
         end
 
+        @impl true
         def init(_arg) do
           {:ok, nil}
         end

@@ -119,10 +119,7 @@ in this guide.
 > [Jetstream documentation](https://docs.nats.io/nats-concepts/jetstream/consumers).
 
 Let's create a pull consumer module within our application at
-`lib/hello_jetstream/logger_pull_consumer.ex`: Pull Consumer is a regular `GenServer` and it takes
-a reference to `Gnat.ConnectionSupervisor` along with names of Jetstream stream and consumer as
-options passed to `Jetstream.PullConsumer.start*` functions. For brevity, if you statically know
-the values of these options, you can pass these to the `use Jetstream.PullConsumer` invocation.
+`lib/hello_jetstream/logger_pull_consumer.ex`:
 
 ```elixir
 defmodule HelloJetstream.LoggerPullConsumer do
@@ -135,6 +132,7 @@ defmodule HelloJetstream.LoggerPullConsumer do
     Jetstream.PullConsumer.start_link(__MODULE__, [])
   end
 
+  @impl true
   def init([]) do
     {:ok, nil}
   end
@@ -147,9 +145,14 @@ defmodule HelloJetstream.LoggerPullConsumer do
 end
 ```
 
-This defines a gen server-style module which bases on `Jetstream.PullConsumer` behavior. The only
-required callback is `c:Jetstream.PullConsumer.handle_message/2`, which takes new message as its
-only argument and is expected to return an atom instructing underlying process loop what to do with this
+Pull Consumer is a regular `GenServer` and it takes a reference to `Gnat.ConnectionSupervisor`
+along with names of Jetstream stream and consumer as options passed to
+`Jetstream.PullConsumer.start*` functions. For brevity, if you statically know the values of these
+options, you can pass these to the `use Jetstream.PullConsumer` invocation.
+
+The only required callbacks are well known gen server's `c:Jetstream.PullConsumer.init/1` and
+`c:Jetstream.PullConsumer.handle_message/2`, which takes new message as its first argument and
+is expected to return an _ACK action_ instructing underlying process loop what to do with this
 message. Here we are asking it to automatically send for us an ACK message back to Jetstream.
 
 Let's now create a consumer in our NATS server. We will call it `LOGGER` as we plan to let it simply
