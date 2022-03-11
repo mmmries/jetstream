@@ -6,82 +6,89 @@ defmodule Jetstream.PullConsumerTest do
   defmodule ExamplePullConsumer do
     use Jetstream.PullConsumer
 
-    def handle_message(%{topic: "ackable"}) do
-      :ack
+    def start_link(opts) do
+      Jetstream.PullConsumer.start_link(__MODULE__, opts)
     end
 
-    def handle_message(%{topic: "non-ackable", reply_to: reply_to}) do
+    @impl true
+    def init(opts) do
+      {:ok, nil, Keyword.merge([connection_name: :gnat], opts)}
+    end
+
+    @impl true
+    def handle_message(%{topic: "ackable"}, state) do
+      {:ack, state}
+    end
+
+    def handle_message(%{topic: "non-ackable", reply_to: reply_to}, state) do
       [_, _, _, _, delivered_count, _, _, _, _] = String.split(reply_to, ".")
 
       # NACK on first delivery
-      if delivered_count == "1", do: :nack, else: :ack
+      if delivered_count == "1" do
+        {:nack, state}
+      else
+        {:ack, state}
+      end
     end
 
-    def handle_message(%{topic: "skippable"}) do
-      :noreply
+    def handle_message(%{topic: "skippable"}, state) do
+      {:noreply, state}
     end
   end
 
   describe "PullConsumer" do
     setup do
-      conn = start_supervised!({Gnat, %{}})
+      {Gnat, %{}}
+      |> Supervisor.child_spec(start: {Gnat, :start_link, [%{}, [name: :gnat]]})
+      |> start_supervised!()
 
       stream_name = "TEST_STREAM"
       stream_subjects = ["ackable", "non-ackable", "skippable"]
       consumer_name = "TEST_CONSUMER"
 
       stream = %Stream{name: stream_name, subjects: stream_subjects}
-      {:ok, _response} = Stream.create(conn, stream)
+      {:ok, _response} = Stream.create(:gnat, stream)
 
       consumer = %Consumer{stream_name: stream_name, durable_name: consumer_name}
-      {:ok, _response} = Consumer.create(conn, consumer)
+      {:ok, _response} = Consumer.create(:gnat, consumer)
 
       %{
-        conn: conn,
         stream_name: stream_name,
         consumer_name: consumer_name
       }
     end
 
     test "ignores messages with :noreply", %{
-      conn: conn,
       stream_name: stream_name,
       consumer_name: consumer_name
     } do
       start_supervised!(
-        {ExamplePullConsumer,
-         connection_name: conn, stream_name: stream_name, consumer_name: consumer_name}
+        {ExamplePullConsumer, stream_name: stream_name, consumer_name: consumer_name}
       )
 
-      :ok = Gnat.pub(conn, "skippable", "hello")
+      :ok = Gnat.pub(:gnat, "skippable", "hello")
 
       refute_receive {:msg, _}
     end
 
-    test "consumes JetStream messages",
-         %{
-           conn: conn,
-           stream_name: stream_name,
-           consumer_name: consumer_name
-         } do
+    test "consumes JetStream messages", %{stream_name: stream_name, consumer_name: consumer_name} do
       start_supervised!(
-        {ExamplePullConsumer,
-         connection_name: conn, stream_name: stream_name, consumer_name: consumer_name}
+        {ExamplePullConsumer, stream_name: stream_name, consumer_name: consumer_name}
       )
 
-      Gnat.sub(conn, self(), "$JS.ACK.#{stream_name}.#{consumer_name}.>")
+      Gnat.sub(:gnat, self(), "$JS.ACK.#{stream_name}.#{consumer_name}.>")
 
-      :ok = Gnat.pub(conn, "ackable", "hello")
-
-      assert_receive {:msg, %{body: "+NXT", topic: topic}}
-      assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
-
-      :ok = Gnat.pub(conn, "ackable", "hello")
+      :ok = Gnat.pub(:gnat, "ackable", "hello")
 
       assert_receive {:msg, %{body: "+NXT", topic: topic}}
       assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
 
-      :ok = Gnat.pub(conn, "non-ackable", "hello")
+      :ok = Gnat.pub(:gnat, "ackable", "hello")
+
+      assert_receive {:msg, %{body: "+NXT", topic: topic}}
+      assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
+
+      :ok = Gnat.pub(:gnat, "non-ackable", "hello")
 
       assert_receive {:msg, %{body: "-NAK", topic: topic}}
       assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
@@ -89,21 +96,16 @@ defmodule Jetstream.PullConsumerTest do
       assert_receive {:msg, %{body: "+NXT", topic: topic}}
       assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.2")
 
-      :ok = Gnat.pub(conn, "ackable", "hello")
+      :ok = Gnat.pub(:gnat, "ackable", "hello")
 
       assert_receive {:msg, %{body: "+NXT", topic: topic}}
       assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
     end
 
-    test "can be manually closed", %{
-      conn: conn,
-      stream_name: stream_name,
-      consumer_name: consumer_name
-    } do
+    test "can be manually closed", %{stream_name: stream_name, consumer_name: consumer_name} do
       pid =
         start_supervised!(
-          {ExamplePullConsumer,
-           connection_name: conn, stream_name: stream_name, consumer_name: consumer_name}
+          {ExamplePullConsumer, stream_name: stream_name, consumer_name: consumer_name}
         )
 
       ref = Process.monitor(pid)
@@ -113,14 +115,14 @@ defmodule Jetstream.PullConsumerTest do
       assert_receive {:DOWN, ^ref, :process, ^pid, :shutdown}
     end
 
-    test "retries on unsucessful connection", %{
+    test "retries on unsuccessful connection", %{
       stream_name: stream_name,
       consumer_name: consumer_name
     } do
       pid =
         start_supervised!(
           {ExamplePullConsumer,
-           connection_name: :gnat,
+           connection_name: :non_existent,
            stream_name: stream_name,
            consumer_name: consumer_name,
            connection_retry_timeout: 50,

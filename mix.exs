@@ -13,7 +13,8 @@ defmodule Jetstream.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      docs: docs()
+      docs: docs(),
+      aliases: aliases()
     ]
   end
 
@@ -66,5 +67,25 @@ defmodule Jetstream.MixProject do
         Guides: ~r/docs\/guides\/[^\/]+\.md/
       ]
     ]
+  end
+
+  defp aliases do
+    [
+      "test.watch": &test_watch/1
+    ]
+  end
+
+  defp test_watch(flags) do
+    System.cmd(
+      "sh",
+      [
+        "-c",
+        """
+        fswatch --one-per-batch --recursive lib/ test/ mix.exs mix.lock \
+        | mix test --color --listen-on-stdin #{Enum.join(flags)}
+        """
+      ],
+      into: IO.stream(:stdio, :line)
+    )
   end
 end
