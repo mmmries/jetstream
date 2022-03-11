@@ -1,5 +1,5 @@
 defmodule Jetstream.API.ConsumerTest do
-  use ExUnit.Case
+  use Jetstream.ConnCase
   alias Jetstream.API.{Consumer, Stream}
 
   test "listing, creating, and deleting consumers" do

@@ -1,5 +1,5 @@
-defmodule Jetstream.PullConsumerTest do
-  use ExUnit.Case
+defmodule Jetstream.PullConsumer.ConnectivityTest do
+  use Jetstream.ConnCase
 
   alias Jetstream.API.{Consumer, Stream}
 
@@ -36,12 +36,10 @@ defmodule Jetstream.PullConsumerTest do
     end
   end
 
-  describe "PullConsumer" do
-    setup do
-      {Gnat, %{}}
-      |> Supervisor.child_spec(start: {Gnat, :start_link, [%{}, [name: :gnat]]})
-      |> start_supervised!()
+  describe "Jetstream.PullConsumer" do
+    @describetag with_gnat: :gnat
 
+    setup do
       stream_name = "TEST_STREAM"
       stream_subjects = ["ackable", "non-ackable", "skippable"]
       consumer_name = "TEST_CONSUMER"

@@ -1,4 +1,5 @@
 defmodule JetstreamTest do
-  use ExUnit.Case
+  use Jetstream.ConnCase
+  @moduletag with_gnat: :gnat
   doctest Jetstream
 end
