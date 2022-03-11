@@ -1,5 +1,5 @@
 defmodule Jetstream.API.StreamTest do
-  use ExUnit.Case
+  use Jetstream.ConnCase
   alias Jetstream.API.Stream
 
   test "listing and creating, and deleting streams" do
