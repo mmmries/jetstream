@@ -8,6 +8,8 @@ defmodule Jetstream.ConnCase do
   using do
     quote do
       import Jetstream.ConnCase
+
+      @moduletag capture_log: true
     end
   end
 
