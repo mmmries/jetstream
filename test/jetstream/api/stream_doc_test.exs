@@ -1,12 +1,5 @@
 defmodule Jetstream.API.StreamDocTest do
-  use ExUnit.Case
+  use Jetstream.ConnCase
+  @moduletag with_gnat: :gnat
   doctest Jetstream.API.Stream
-
-  setup do
-    {Gnat, %{}}
-    |> Supervisor.child_spec(start: {Gnat, :start_link, [%{}, [name: :gnat]]})
-    |> start_supervised!()
-
-    :ok
-  end
 end
