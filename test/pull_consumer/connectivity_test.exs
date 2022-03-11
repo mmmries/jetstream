@@ -1,4 +1,4 @@
-defmodule Jetstream.PullConsumerTest do
+defmodule Jetstream.PullConsumer.ConnectivityTest do
   use Jetstream.ConnCase
 
   alias Jetstream.API.{Consumer, Stream}
@@ -36,7 +36,7 @@ defmodule Jetstream.PullConsumerTest do
     end
   end
 
-  describe "PullConsumer" do
+  describe "Jetstream.PullConsumer" do
     @describetag with_gnat: :gnat
 
     setup do
