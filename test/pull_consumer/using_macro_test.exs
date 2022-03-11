@@ -9,7 +9,7 @@ defmodule Jetstream.PullConsumer.UsingMacroTest do
     end
 
     @impl true
-    def init() do
+    def init([]) do
       {:ok, nil, []}
     end
 
