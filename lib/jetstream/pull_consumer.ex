@@ -70,6 +70,7 @@ defmodule Jetstream.PullConsumer do
   * `:connection_retries` - a number of attempts the PullConsumer will make to establish the NATS
     connection. When this value is exceeded, the pull consumer stops with the `:timeout` reason,
     defaults to `10`
+  * `:inbox_prefix` - allows the default `_INBOX.` prefix to be customized. Should end with a dot.
 
   ## Dynamic Connection Options
 

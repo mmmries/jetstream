@@ -28,7 +28,7 @@ defmodule Jetstream.PullConsumer.Server do
         gen_state = %__MODULE__{
           connection_options: connection_options,
           state: state,
-          listening_topic: new_listening_topic(),
+          listening_topic: new_listening_topic(connection_options),
           module: module
         }
 
@@ -42,8 +42,8 @@ defmodule Jetstream.PullConsumer.Server do
     end
   end
 
-  defp new_listening_topic do
-    "_CON.#{nuid()}"
+  defp new_listening_topic(%ConnectionOptions{} = o) do
+    o.inbox_prefix <> nuid()
   end
 
   defp nuid() do
