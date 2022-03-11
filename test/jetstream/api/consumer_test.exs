@@ -2,12 +2,13 @@ defmodule Jetstream.API.ConsumerTest do
   use Jetstream.ConnCase
   alias Jetstream.API.{Consumer, Stream}
 
-  test "listing, creating, and deleting consumers" do
-    conn = gnat()
-    stream = %Stream{name: "STREAM1", subjects: ["STREAM1"]}
-    {:ok, _response} = Stream.create(conn, stream)
+  @moduletag with_gnat: :gnat
 
-    assert {:ok, consumers} = Consumer.list(conn, "STREAM1")
+  test "listing, creating, and deleting consumers" do
+    stream = %Stream{name: "STREAM1", subjects: ["STREAM1"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+
+    assert {:ok, consumers} = Consumer.list(:gnat, "STREAM1")
 
     assert consumers == %{
              total: 0,
@@ -17,7 +18,7 @@ defmodule Jetstream.API.ConsumerTest do
            }
 
     consumer = %Consumer{stream_name: "STREAM1", durable_name: "STREAM1"}
-    assert {:ok, consumer_response} = Consumer.create(conn, consumer)
+    assert {:ok, consumer_response} = Consumer.create(:gnat, consumer)
 
     assert consumer_response.ack_floor == %{
              consumer_seq: 0,
@@ -60,7 +61,7 @@ defmodule Jetstream.API.ConsumerTest do
     assert consumer_response.num_pending == 0
     assert consumer_response.num_redelivered == 0
 
-    assert {:ok, consumers} = Consumer.list(conn, "STREAM1")
+    assert {:ok, consumers} = Consumer.list(:gnat, "STREAM1")
 
     assert consumers == %{
              total: 1,
@@ -69,8 +70,8 @@ defmodule Jetstream.API.ConsumerTest do
              consumers: ["STREAM1"]
            }
 
-    assert :ok = Consumer.delete(conn, "STREAM1", "STREAM1")
-    assert {:ok, consumers} = Consumer.list(conn, "STREAM1")
+    assert :ok = Consumer.delete(:gnat, "STREAM1", "STREAM1")
+    assert {:ok, consumers} = Consumer.list(:gnat, "STREAM1")
 
     assert consumers == %{
              total: 0,
@@ -84,18 +85,17 @@ defmodule Jetstream.API.ConsumerTest do
     consumer = %Consumer{durable_name: "STREAM2", stream_name: "STREAM2"}
 
     assert {:error, %{"code" => 404, "description" => "stream not found"}} =
-             Consumer.create(gnat(), consumer)
+             Consumer.create(:gnat, consumer)
   end
 
   test "failed deletes" do
     assert {:error, %{"code" => 404, "description" => "stream not found"}} =
-             Consumer.delete(gnat(), "STREAM3", "STREAM3")
+             Consumer.delete(:gnat, "STREAM3", "STREAM3")
   end
 
   test "getting consumer info" do
-    conn = gnat()
     stream = %Stream{name: "STREAM4", subjects: ["STREAM4"]}
-    {:ok, _response} = Stream.create(conn, stream)
+    {:ok, _response} = Stream.create(:gnat, stream)
 
     consumer = %Consumer{
       stream_name: "STREAM4",
@@ -103,9 +103,9 @@ defmodule Jetstream.API.ConsumerTest do
       deliver_subject: "consumer.STREAM4"
     }
 
-    assert {:ok, _consumer_response} = Consumer.create(conn, consumer)
+    assert {:ok, _consumer_response} = Consumer.create(:gnat, consumer)
 
-    assert {:ok, consumer_response} = Consumer.info(conn, "STREAM4", "STREAM4")
+    assert {:ok, consumer_response} = Consumer.info(:gnat, "STREAM4", "STREAM4")
 
     assert consumer_response.ack_floor == %{
              consumer_seq: 0,
@@ -148,12 +148,7 @@ defmodule Jetstream.API.ConsumerTest do
     assert consumer_response.num_pending == 0
     assert consumer_response.num_redelivered == 0
 
-    assert :ok = Consumer.delete(conn, "STREAM4", "STREAM4")
-    assert :ok = Stream.delete(conn, "STREAM4")
-  end
-
-  defp gnat do
-    {:ok, pid} = Gnat.start_link()
-    pid
+    assert :ok = Consumer.delete(:gnat, "STREAM4", "STREAM4")
+    assert :ok = Stream.delete(:gnat, "STREAM4")
   end
 end
