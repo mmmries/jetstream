@@ -173,7 +173,7 @@ defmodule Jetstream.PullConsumer do
   * `:nack` - signals that the message will not be processed now and processing can move onto
     the next message, NAK'd message will be retried.
   * `:noreply` - nothing is sent. You may send later asynchronously an ACK or NACK message using
-    the `Jetstream.ack/1` or `Jetstream.nack/1` functions.
+    the `Jetstream.ack/1` or `Jetstream.nack/1` and similar functions from `Jetstream` module.
 
   ## Example
 
