@@ -364,7 +364,7 @@ defmodule Jetstream.API.Consumer do
       headers_only: Map.get(raw, "headers_only"),
       idle_heartbeat: Map.get(raw, "idle_heartbeat"),
       inactive_threshold: Map.get(raw, "inactive_threshold"),
-      max_ack_panding: Map.get(raw, "max_ack_pending"),
+      max_ack_pending: Map.get(raw, "max_ack_pending"),
       max_batch: Map.get(raw, "max_batch"),
       max_deliver: Map.get(raw, "max_deliver"),
       max_expires: Map.get(raw, "max_expires"),
