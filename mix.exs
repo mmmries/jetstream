@@ -33,7 +33,7 @@ defmodule Jetstream.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:connection, "~> 1.1"},
+      {:connection, "~> 1.0"},
       {:gnat, "~> 1.1"},
       {:jason, "~> 1.1"},
       {:ex_doc, "~> 0.28", only: :dev, runtime: false}
