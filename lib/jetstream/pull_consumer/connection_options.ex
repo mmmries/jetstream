@@ -2,7 +2,7 @@ defmodule Jetstream.PullConsumer.ConnectionOptions do
   @moduledoc false
 
   @default_retry_timeout 1000
-  @default_retries 10
+  @default_retries :infinite
   @default_inbox_prefix "_INBOX."
 
   @enforce_keys [
