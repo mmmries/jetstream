@@ -24,3 +24,6 @@ jetstream-*.tar
 
 # ASDF tool versions
 .tool-versions
+
+# Ignore the tmp directory used to stash things during development
+/tmp
