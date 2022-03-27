@@ -33,4 +33,12 @@ defmodule Jetstream.API.Util do
       _ -> target_map
     end
   end
+
+  def valid_name?(name) do
+    !String.contains?(name, [".", "*", ">", " ", "\t"])
+  end
+
+  def invalid_name_message do
+    "cannot contain '.', '>', '*', spaces or tabs"
+  end
 end

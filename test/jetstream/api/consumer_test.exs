@@ -151,4 +151,31 @@ defmodule Jetstream.API.ConsumerTest do
     assert :ok = Consumer.delete(:gnat, "STREAM4", "STREAM4")
     assert :ok = Stream.delete(:gnat, "STREAM4")
   end
+
+  test "validating stream and consumer names" do
+    assert {:error, reason} =
+             Consumer.create(:gnat, %Consumer{stream_name: "test.periods", durable_name: "foo"})
+
+    assert reason == "invalid stream_name: cannot contain '.', '>', '*', spaces or tabs"
+
+    assert {:error, reason} =
+             Consumer.create(:gnat, %Consumer{stream_name: nil, durable_name: "foo"})
+
+    assert reason == "must have a :stream_name set"
+
+    assert {:error, reason} =
+             Consumer.create(:gnat, %Consumer{stream_name: :foo, durable_name: "foo"})
+
+    assert reason == "stream_name must be a string"
+
+    assert {:error, reason} =
+             Consumer.create(:gnat, %Consumer{stream_name: "TEST_STREAM", durable_name: "foo.bar"})
+
+    assert reason == "invalid durable_name: cannot contain '.', '>', '*', spaces or tabs"
+
+    assert {:error, reason} =
+             Consumer.create(:gnat, %Consumer{stream_name: "TEST_STREAM", durable_name: :ohai})
+
+    assert reason == "durable_name must be a string"
+  end
 end

@@ -83,22 +83,22 @@ defmodule Jetstream.API.StreamTest do
     assert {:error, reason} =
              Stream.create(:gnat, %Stream{name: "test.periods", subjects: ["foo"]})
 
-    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+    assert reason == "invalid name: cannot contain '.', '>', '*', spaces or tabs"
 
     assert {:error, reason} =
              Stream.create(:gnat, %Stream{name: "test>greater", subjects: ["foo"]})
 
-    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+    assert reason == "invalid name: cannot contain '.', '>', '*', spaces or tabs"
 
     assert {:error, reason} = Stream.create(:gnat, %Stream{name: "test_star*", subjects: ["foo"]})
-    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+    assert reason == "invalid name: cannot contain '.', '>', '*', spaces or tabs"
 
     assert {:error, reason} =
              Stream.create(:gnat, %Stream{name: "test-space ", subjects: ["foo"]})
 
-    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+    assert reason == "invalid name: cannot contain '.', '>', '*', spaces or tabs"
 
     assert {:error, reason} = Stream.create(:gnat, %Stream{name: "\ttest-tab", subjects: ["foo"]})
-    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+    assert reason == "invalid name: cannot contain '.', '>', '*', spaces or tabs"
   end
 end

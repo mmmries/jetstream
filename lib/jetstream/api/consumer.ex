@@ -228,7 +228,8 @@ defmodule Jetstream.API.Consumer do
   def create(conn, %__MODULE__{durable_name: name} = consumer) when not is_nil(name) do
     create_topic = "$JS.API.CONSUMER.DURABLE.CREATE.#{consumer.stream_name}.#{name}"
 
-    with {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
+    with :ok <- validate_durable(consumer),
+         {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
       {:ok, to_info(raw_response)}
     end
   end
@@ -236,7 +237,8 @@ defmodule Jetstream.API.Consumer do
   def create(conn, %__MODULE__{} = consumer) do
     create_topic = "$JS.API.CONSUMER.CREATE.#{consumer.stream_name}"
 
-    with {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
+    with :ok <- validate(consumer),
+         {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
       {:ok, to_info(raw_response)}
     end
   end
@@ -398,5 +400,36 @@ defmodule Jetstream.API.Consumer do
       push_bound: Map.get(raw, "push_bound"),
       stream_name: Map.get(raw, "stream_name")
     }
+  end
+
+  defp validate(consumer) do
+    cond do
+      consumer.stream_name == nil ->
+        {:error, "must have a :stream_name set"}
+
+      is_binary(consumer.stream_name) == false ->
+        {:error, "stream_name must be a string"}
+
+      valid_name?(consumer.stream_name) == false ->
+        {:error, "invalid stream_name: " <> invalid_name_message()}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_durable(consumer) do
+    with :ok <- validate(consumer) do
+      cond do
+        is_binary(consumer.durable_name) == false ->
+          {:error, "durable_name must be a string"}
+
+        valid_name?(consumer.durable_name) == false ->
+          {:error, "invalid durable_name: " <> invalid_name_message()}
+
+        true ->
+          :ok
+      end
+    end
   end
 end
