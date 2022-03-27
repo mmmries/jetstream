@@ -353,6 +353,9 @@ defmodule Jetstream.API.Stream do
       is_binary(Map.get(stream_settings, :name)) == false ->
         {:error, "name must be a string"}
 
+      String.contains?(stream_settings.name, [".", "*", ">", " ", "\t"]) ->
+        {:error, "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"}
+
       Map.has_key?(stream_settings, :subjects) == false ->
         {:error, "You must specify a :subjects key"}
 

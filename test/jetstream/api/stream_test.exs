@@ -78,4 +78,27 @@ defmodule Jetstream.API.StreamTest do
     assert result.retention == :workqueue
     assert result.storage == :memory
   end
+
+  test "validating stream names" do
+    assert {:error, reason} =
+             Stream.create(:gnat, %Stream{name: "test.periods", subjects: ["foo"]})
+
+    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+
+    assert {:error, reason} =
+             Stream.create(:gnat, %Stream{name: "test>greater", subjects: ["foo"]})
+
+    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+
+    assert {:error, reason} = Stream.create(:gnat, %Stream{name: "test_star*", subjects: ["foo"]})
+    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+
+    assert {:error, reason} =
+             Stream.create(:gnat, %Stream{name: "test-space ", subjects: ["foo"]})
+
+    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+
+    assert {:error, reason} = Stream.create(:gnat, %Stream{name: "\ttest-tab", subjects: ["foo"]})
+    assert reason == "invalid stream name, cannot contain '.', '>', '*', spaces or tabs"
+  end
 end
