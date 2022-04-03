@@ -73,6 +73,7 @@ defmodule Jetstream.PullConsumer.Server do
 
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
+         :ok <- check_consumer_exists(connection_name, stream_name, consumer_name),
          {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
          gen_state = %{gen_state | subscription_id: sid},
          :ok <- next_message(conn, stream_name, consumer_name, listening_topic),
@@ -143,6 +144,16 @@ defmodule Jetstream.PullConsumer.Server do
 
       Connection.reply(from, :ok)
       {:stop, :shutdown, gen_state}
+    end
+  end
+
+  defp check_consumer_exists(gnat, stream_name, consumer_name) do
+    case Jetstream.API.Consumer.info(gnat, stream_name, consumer_name) do
+      {:ok, _consumer} ->
+        :ok
+
+      {:error, message} ->
+        {:error, message}
     end
   end
 
