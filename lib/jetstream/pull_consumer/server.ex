@@ -76,7 +76,7 @@ defmodule Jetstream.PullConsumer.Server do
          :ok <- check_consumer_exists(connection_name, stream_name, consumer_name),
          {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
          gen_state = %{gen_state | subscription_id: sid},
-         :ok <- next_message(conn, stream_name, consumer_name, listening_topic),
+         :ok <- initial_pull(conn, stream_name, consumer_name, listening_topic),
          gen_state = %{gen_state | current_retry: 0} do
       {:ok, gen_state}
     else
@@ -182,7 +182,6 @@ defmodule Jetstream.PullConsumer.Server do
           },
           listening_topic: listening_topic,
           subscription_id: subscription_id,
-          state: state,
           module: module
         } = gen_state
       ) do
@@ -197,37 +196,11 @@ defmodule Jetstream.PullConsumer.Server do
       connection_name: connection_name
     )
 
-    case module.handle_message(message, state) do
-      {:ack, state} ->
-        Jetstream.ack_next(message, listening_topic)
+    spawn(fn ->
+      Jetstream.PullConsumer.Job.run(message, module, listening_topic)
+    end)
 
-        gen_state = %{gen_state | state: state}
-        {:noreply, gen_state}
-
-      {:nack, state} ->
-        Jetstream.nack(message)
-
-        next_message(
-          message.gnat,
-          stream_name,
-          consumer_name,
-          listening_topic
-        )
-
-        gen_state = %{gen_state | state: state}
-        {:noreply, gen_state}
-
-      {:noreply, state} ->
-        next_message(
-          message.gnat,
-          stream_name,
-          consumer_name,
-          listening_topic
-        )
-
-        gen_state = %{gen_state | state: state}
-        {:noreply, gen_state}
-    end
+    {:noreply, gen_state}
   end
 
   def handle_info(
@@ -313,6 +286,15 @@ defmodule Jetstream.PullConsumer.Server do
       conn,
       "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
       "1",
+      reply_to: listening_topic
+    )
+  end
+
+  defp initial_pull(conn, stream_name, consumer_name, listening_topic) do
+    Gnat.pub(
+      conn,
+      "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
+      "128",
       reply_to: listening_topic
     )
   end
