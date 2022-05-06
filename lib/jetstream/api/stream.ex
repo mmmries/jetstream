@@ -226,7 +226,8 @@ defmodule Jetstream.API.Stream do
 
   ## Examples
 
-      iex> {:ok, %{updated: _}} = Jetstream.API.Stream.update(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject", "new subject"]})
+      iex> {:ok, %{created: _}} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "update_test_stream", subjects: ["update_subject"]})
+      iex> {:ok, _} = Jetstream.API.Stream.update(:gnat, %Jetstream.API.Stream{name: "update_test_stream", subjects: ["update_subject", "new.update_subject"]})
 
   """
   @spec update(conn :: Gnat.t(), stream :: t()) :: {:ok, info()} | {:error, any()}
