@@ -35,6 +35,15 @@ defmodule Jetstream.API.StreamTest do
     assert streams == nil || !("LIST_TEST" in streams)
   end
 
+  test "updating a stream" do
+    stream = %Stream{name: "UPDATE_TEST", subjects: ["STREAM_TEST"]}
+    assert {:ok, _response} = Stream.create(:gnat, stream)
+    updated_stream = %Stream{name: "UPDATE_TEST", subjects: ["STREAM_TEST", "NEW_SUBJECT"]}
+    assert {:ok, response} = Stream.update(:gnat, updated_stream)
+    assert response.config.subjects == ["STREAM_TEST", "NEW_SUBJECT"]
+    assert :ok = Stream.delete(:gnat, "UPDATE_TEST")
+  end
+
   test "failed deletes" do
     assert {:error, %{"code" => 404, "description" => "stream not found"}} =
              Stream.delete(:gnat, "NaN")
