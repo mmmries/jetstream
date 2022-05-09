@@ -327,13 +327,14 @@ defmodule Jetstream.API.Stream do
     with :ok <- validate_message_access_method(method),
          {:ok, %{"message" => message}} <-
            request(conn, "$JS.API.STREAM.MSG.GET.#{stream_name}", Jason.encode!(method)) do
-      %{
-        data: decode_base64(message["data"]),
-        seq: message["seq"],
-        subject: message["subject"],
-        time: to_datetime(message["time"]),
-        hdrs: decode_base64(message["hdrs"])
-      }
+      {:ok,
+       %{
+         data: decode_base64(message["data"]),
+         seq: message["seq"],
+         subject: message["subject"],
+         time: to_datetime(message["time"]),
+         hdrs: decode_base64(message["hdrs"])
+       }}
     end
   end
 
