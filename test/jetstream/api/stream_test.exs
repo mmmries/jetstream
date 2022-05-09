@@ -133,11 +133,11 @@ defmodule Jetstream.API.StreamTest do
     test "decodes message data with headers" do
       stream = %Stream{name: "GET_MESSAGE_TEST", subjects: ["GET_MESSAGE_TEST.*"]}
       assert {:ok, _response} = Stream.create(:gnat, stream)
-      assert :ok = Gnat.pub(:gnat, "GET_MESSAGE_TEST.foo", "hi there", headers: [{"foo", "bar"}])
+      assert :ok = Gnat.pub(:gnat, "GET_MESSAGE_TEST.bar", "hi there", headers: [{"foo", "bar"}])
 
       assert {:ok, response} =
                Stream.get_message(:gnat, "GET_MESSAGE_TEST", %{
-                 last_by_subj: "GET_MESSAGE_TEST.foo"
+                 last_by_subj: "GET_MESSAGE_TEST.bar"
                })
 
       assert response.hdrs =~ "foo: bar"
