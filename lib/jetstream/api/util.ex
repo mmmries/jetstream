@@ -41,4 +41,7 @@ defmodule Jetstream.API.Util do
   def invalid_name_message do
     "cannot contain '.', '>', '*', spaces or tabs"
   end
+
+  def decode_base64(nil), do: nil
+  def decode_base64(data), do: Base.decode64!(data)
 end
