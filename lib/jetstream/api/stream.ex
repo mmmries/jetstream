@@ -383,6 +383,7 @@ defmodule Jetstream.API.Stream do
       max_bytes: Map.fetch!(stream, "max_bytes"),
       max_consumers: Map.fetch!(stream, "max_consumers"),
       max_msg_size: Map.get(stream, "max_msg_size"),
+      max_msgs_per_subject: Map.get(stream, "max_msgs_per_subject"),
       max_msgs: Map.fetch!(stream, "max_msgs"),
       mirror: Map.get(stream, "mirror"),
       name: Map.fetch!(stream, "name"),
