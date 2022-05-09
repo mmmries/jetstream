@@ -113,17 +113,19 @@ defmodule Jetstream.API.StreamTest do
       assert {:ok, _response} = Stream.create(:gnat, stream)
       assert :ok = Gnat.pub(:gnat, "GET_MESSAGE_TEST.foo", "hi there")
 
-      assert {:ok,
-              %{
-                data: "hi there",
-                hdrs: nil,
-                subject: "GET_MESSAGE_TEST.foo",
-                time: %DateTime{},
-                seq: 1
-              }} =
+      assert {:ok, response} =
                Stream.get_message(:gnat, "GET_MESSAGE_TEST", %{
                  last_by_subj: "GET_MESSAGE_TEST.foo"
                })
+
+      %{
+        data: "hi there",
+        hdrs: nil,
+        subject: "GET_MESSAGE_TEST.foo",
+        time: %DateTime{}
+      } = response
+
+      assert is_number(response.seq)
 
       assert :ok = Stream.delete(:gnat, "GET_MESSAGE_TEST")
     end
