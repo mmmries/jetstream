@@ -27,6 +27,7 @@ defmodule Jetstream.API.Stream do
     refusing new messages if the Stream exceeds this size.
   * `:max_consumers` - how many Consumers can be defined for a given Stream, -1 for unlimited.
   * `:max_msg_size` - the largest message that will be accepted by the Stream.
+  * `:max_msgs_per_subject` - For wildcard streams ensure that for every unique subject this many messages are kept - a per subject retention limit
   * `:max_msgs` - how many messages may be in a Stream. Adheres to `:discard`, removing oldest or refusing
     new messages if the Stream exceeds this number of messages
   * `:mirror` - maintains a 1:1 mirror of another stream with name matching this property.  When a mirror
