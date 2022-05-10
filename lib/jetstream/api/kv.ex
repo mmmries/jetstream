@@ -71,6 +71,19 @@ defmodule Jetstream.API.KV do
   end
 
   @doc """
+  Put a value into a Key in a K/V Bucket
+
+  ## Examples
+
+      iex>:ok = Jetstream.API.KV.put_value(:gnat, "my_bucket", "my_key", "my_value")
+  """
+  @spec put_value(conn :: Gnat.t(), bucket_name :: binary(), key :: binary(), value :: binary()) ::
+          :ok
+  def put_value(conn, bucket_name, key, value) do
+    Gnat.pub(conn, key_name(bucket_name, key), value)
+  end
+
+  @doc """
   Get the value for a key in a particular K/V bucket
 
   ## Examples
