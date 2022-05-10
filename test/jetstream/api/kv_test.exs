@@ -4,15 +4,35 @@ defmodule Jetstream.API.StreamTest do
 
   @moduletag with_gnat: :gnat
 
-  test "create_bucket/2 creates a bucket" do
-    assert {:ok, %{config: config}} = KV.create_bucket(:gnat, "BUCKET_TEST")
-    assert config.name == "KV_BUCKET_TEST"
-    assert config.subjects == ["$KV.BUCKET_TEST.>"]
-    assert config.max_msgs_per_subject == 1
-    assert config.discard == :new
-    assert config.allow_rollup_hdrs == true
+  describe "create_bucket/3" do
+    test "creates a bucket" do
+      assert {:ok, %{config: config}} = KV.create_bucket(:gnat, "BUCKET_TEST")
+      assert config.name == "KV_BUCKET_TEST"
+      assert config.subjects == ["$KV.BUCKET_TEST.>"]
+      assert config.max_msgs_per_subject == 1
+      assert config.discard == :new
+      assert config.allow_rollup_hdrs == true
 
-    assert :ok = KV.delete_bucket(:gnat, "BUCKET_TEST")
+      assert :ok = KV.delete_bucket(:gnat, "BUCKET_TEST")
+    end
+
+    test "creates a bucket with duplicate window < 2min" do
+      assert {:ok, %{config: config}} = KV.create_bucket(:gnat, "TTL_TEST", ttl: 100_000_000)
+      assert config.max_age == 100_000_000
+      assert config.duplicate_window == 100_000_000
+
+      assert :ok = KV.delete_bucket(:gnat, "TTL_TEST")
+    end
+
+    test "creates a bucket with duplicate window > 2min" do
+      assert {:ok, %{config: config}} =
+               KV.create_bucket(:gnat, "OTHER_TTL_TEST", ttl: 1_300_000_000)
+
+      assert config.max_age == 1_300_000_000
+      assert config.duplicate_window == 1_200_000_000
+
+      assert :ok = KV.delete_bucket(:gnat, "OTHER_TTL_TEST")
+    end
   end
 
   test "create_key/4 creates a key" do

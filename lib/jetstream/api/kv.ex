@@ -8,6 +8,7 @@ defmodule Jetstream.API.KV do
 
   @stream_prefix "KV_"
   @subject_prefix "$KV."
+  @two_minutes_in_nanoseconds 1_200_000_000
 
   @doc """
   Create a new Key/Value bucket. Can include the following options
@@ -47,11 +48,17 @@ defmodule Jetstream.API.KV do
       max_msg_size: Keyword.get(params, :max_value_size, -1),
       num_replicas: Keyword.get(params, :replicas, 1),
       storage: Keyword.get(params, :storage, :file),
-      placement: Keyword.get(params, :placement)
+      placement: Keyword.get(params, :placement),
+      duplicate_window: adjust_duplicate_window(Keyword.get(params, :ttl, 0))
     }
 
     Stream.create(conn, stream)
   end
+
+  # The `duplicate_window` can't be greater than the `max_age`. The default `duplicate_window`
+  # is 2 minutes. We'll keep the 2 minute window UNLESS the ttl is less than 2 minutes
+  defp adjust_duplicate_window(ttl) when ttl > 0 and ttl < @two_minutes_in_nanoseconds, do: ttl
+  defp adjust_duplicate_window(_ttl), do: @two_minutes_in_nanoseconds
 
   @doc """
   Delete a Key/Value bucket
