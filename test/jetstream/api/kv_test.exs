@@ -14,4 +14,10 @@ defmodule Jetstream.API.StreamTest do
 
     assert :ok = KV.delete_bucket(:gnat, "BUCKET_TEST")
   end
+
+  test "create_key/4 creates a key" do
+    assert {:ok, _} = KV.create_bucket(:gnat, "KEY_CREATE_TEST")
+    assert :ok = KV.create_key(:gnat, "KEY_CREATE_TEST", "foo", "bar")
+    assert "bar" = KV.get_value(:gnat, "KEY_CREATE_TEST", "foo")
+  end
 end

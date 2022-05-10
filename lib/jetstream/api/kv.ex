@@ -19,7 +19,7 @@ defmodule Jetstream.API.KV do
     # The primary NATS docs don't provide information about how to interact
     # with Key-Value functionality over the wire. Turns out the KV store is
     # just a Stream under-the-hood
-    # Discovered these settings from looking at the `nats-server -js -DVV` logs
+    # Discovered these settings from looking at the `nats-server -js -DV` logs
     # as well as the GoLang implementation https://github.com/nats-io/nats.go/blob/dd91b86bc4f7fa0f061fefe11506aaee413bfafd/kv.go#L339
     # If the settings aren't correct, NATS will not consider it a valid KV store
     stream = %Stream{
@@ -45,11 +45,50 @@ defmodule Jetstream.API.KV do
     Stream.delete(conn, stream_name(bucket_name))
   end
 
+  @doc """
+  Create a Key in a Key/Value Bucket
+
+  ## Examples
+
+      iex>:ok = Jetstream.API.KV.create_key(:gnat, "my_bucket", "my_key", "my_value")
+  """
+  @spec create_key(conn :: Gnat.t(), bucket_name :: binary, key :: binary(), value :: binary()) ::
+          :ok
+  def create_key(conn, bucket_name, key, value) do
+    Gnat.pub(conn, key_name(bucket_name, key), value)
+  end
+
+  @doc """
+  Get the value for a key in a particular K/V bucket
+
+  ## Examples
+
+      iex>"my_value" = Jetstream.API.KV.get_value(:gnat, "my_bucket", "my_key")
+  """
+  @spec get_value(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) ::
+          binary() | {:error, any()}
+  def get_value(conn, bucket_name, key) do
+    case Stream.get_message(conn, stream_name(bucket_name), %{
+           last_by_subj: key_name(bucket_name, key)
+         }) do
+      {:ok, message} -> message.data
+      error -> error
+    end
+  end
+
   defp stream_name(bucket_name) do
     "KV_#{bucket_name}"
   end
 
   defp stream_subjects(bucket_name) do
-    ["$KV.#{bucket_name}.>"]
+    ["#{subject_prefix(bucket_name)}.>"]
+  end
+
+  defp key_name(bucket_name, key) do
+    "#{subject_prefix(bucket_name)}.#{key}"
+  end
+
+  defp subject_prefix(bucket_name) do
+    "$KV.#{bucket_name}"
   end
 end
