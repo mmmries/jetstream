@@ -10,15 +10,24 @@ defmodule Jetstream.API.KV do
   @subject_prefix "$KV."
 
   @doc """
-  Create a new Key/Value bucket
+  Create a new Key/Value bucket. Can include the following options
+
+  * `:history` - How many historic values to keep per key (defaults to 1, max of 64)
+  * `:ttl` - How long to keep values for (in nanoseconds)
+  * `:max_bucket_size` - The max number of bytes the bucket can hold
+  * `:max_value_size` - The max number of bytes a value may be
+  * `:description` - A description for the bucket
+  * `:replicas` - How many replicas of the data to store
+  * `:storage` - Storage backend to use (:file, :memory)
+  * `:placement` - A map with :cluster (required) and :tags (optional)
 
   ## Examples
 
      iex>{:ok, info} = Jetstream.API.KV.create_bucket(:gnat, "my_bucket")
   """
-  @spec create_bucket(conn :: Gnat.t(), bucket_name :: binary()) ::
+  @spec create_bucket(conn :: Gnat.t(), bucket_name :: binary(), params :: keyword()) ::
           {:ok, Stream.info()} | {:error, any()}
-  def create_bucket(conn, bucket_name) do
+  def create_bucket(conn, bucket_name, params \\ []) do
     # The primary NATS docs don't provide information about how to interact
     # with Key-Value functionality over the wire. Turns out the KV store is
     # just a Stream under-the-hood
@@ -28,9 +37,17 @@ defmodule Jetstream.API.KV do
     stream = %Stream{
       name: stream_name(bucket_name),
       subjects: stream_subjects(bucket_name),
-      max_msgs_per_subject: 1,
+      description: Keyword.get(params, :description),
+      max_msgs_per_subject: Keyword.get(params, :history, 1),
       discard: :new,
-      allow_rollup_hdrs: true
+      deny_delete: true,
+      allow_rollup_hdrs: true,
+      max_age: Keyword.get(params, :ttl, 0),
+      max_bytes: Keyword.get(params, :max_bucket_size, -1),
+      max_msg_size: Keyword.get(params, :max_value_size, -1),
+      num_replicas: Keyword.get(params, :replicas, 1),
+      storage: Keyword.get(params, :storage, :file),
+      placement: Keyword.get(params, :placement)
     }
 
     Stream.create(conn, stream)

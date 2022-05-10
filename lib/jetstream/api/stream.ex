@@ -88,6 +88,11 @@ defmodule Jetstream.API.Stream do
 
   @type nanoseconds :: non_neg_integer()
 
+  @type placement :: %{
+          :cluster => binary(),
+          optional(:tags) => list(binary())
+        }
+
   @type t :: %__MODULE__{
           allow_rollup_hdrs: boolean(),
           deny_delete: boolean(),
@@ -104,12 +109,7 @@ defmodule Jetstream.API.Stream do
           name: binary(),
           no_ack: nil | boolean(),
           num_replicas: pos_integer(),
-          placement:
-            nil
-            | %{
-                :cluster => binary(),
-                optional(:tags) => list(binary())
-              },
+          placement: nil | placement(),
           retention: :limits | :workqueue | :interest,
           sealed: boolean(),
           sources: nil | list(source()),
