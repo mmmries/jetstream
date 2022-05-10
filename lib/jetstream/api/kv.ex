@@ -98,6 +98,19 @@ defmodule Jetstream.API.KV do
   end
 
   @doc """
+  Purge a Key from a K/V bucket. This will remove any revision history the key had
+
+  ## Examples
+
+      iex>:ok = Jetstream.API.KV.purge_key(:gnat, "my_bucket", "my_key")
+  """
+  def purge_key(conn, bucket_name, key) do
+    Gnat.pub(conn, key_name(bucket_name, key), "",
+      headers: [{"KV-Operation", "PURGE"}, {"Nats-Rollup", "sub"}]
+    )
+  end
+
+  @doc """
   Put a value into a Key in a K/V Bucket
 
   ## Examples
