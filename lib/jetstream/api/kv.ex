@@ -52,10 +52,22 @@ defmodule Jetstream.API.KV do
 
       iex>:ok = Jetstream.API.KV.create_key(:gnat, "my_bucket", "my_key", "my_value")
   """
-  @spec create_key(conn :: Gnat.t(), bucket_name :: binary, key :: binary(), value :: binary()) ::
+  @spec create_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary(), value :: binary()) ::
           :ok
   def create_key(conn, bucket_name, key, value) do
     Gnat.pub(conn, key_name(bucket_name, key), value)
+  end
+
+  @doc """
+  Delete a Key from a K/V Bucket
+
+  ## Examples
+
+      iex>:ok = Jetstream.API.KV.delete_key(:gnat, "my_bucket", "my_key")
+  """
+  @spec delete_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) :: :ok
+  def delete_key(conn, bucket_name, key) do
+    Gnat.pub(conn, key_name(bucket_name, key), "", headers: [{"KV-Operation", "DEL"}])
   end
 
   @doc """
