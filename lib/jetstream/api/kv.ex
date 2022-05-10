@@ -6,6 +6,9 @@ defmodule Jetstream.API.KV do
   """
   alias Jetstream.API.Stream
 
+  @stream_prefix "KV_"
+  @subject_prefix "$KV."
+
   @doc """
   Create a new Key/Value bucket
 
@@ -102,18 +105,14 @@ defmodule Jetstream.API.KV do
   end
 
   defp stream_name(bucket_name) do
-    "KV_#{bucket_name}"
+    "#{@stream_prefix}#{bucket_name}"
   end
 
   defp stream_subjects(bucket_name) do
-    ["#{subject_prefix(bucket_name)}.>"]
+    ["#{@subject_prefix}#{bucket_name}.>"]
   end
 
   defp key_name(bucket_name, key) do
-    "#{subject_prefix(bucket_name)}.#{key}"
-  end
-
-  defp subject_prefix(bucket_name) do
-    "$KV.#{bucket_name}"
+    "#{@subject_prefix}#{bucket_name}.#{key}"
   end
 end
