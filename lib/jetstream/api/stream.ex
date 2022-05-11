@@ -222,6 +222,24 @@ defmodule Jetstream.API.Stream do
   end
 
   @doc """
+  Updates a Stream.
+
+  ## Examples
+
+      iex> {:ok, %{created: _}} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "update_test_stream", subjects: ["update_subject"]})
+      iex> {:ok, _} = Jetstream.API.Stream.update(:gnat, %Jetstream.API.Stream{name: "update_test_stream", subjects: ["update_subject", "new.update_subject"]})
+
+  """
+  @spec update(conn :: Gnat.t(), stream :: t()) :: {:ok, info()} | {:error, any()}
+  def update(conn, %__MODULE__{} = stream) do
+    with :ok <- validate(stream),
+         {:ok, stream} <-
+           request(conn, "$JS.API.STREAM.UPDATE.#{stream.name}", Jason.encode!(stream)) do
+      {:ok, to_info(stream)}
+    end
+  end
+
+  @doc """
   Deletes a Stream and all its data.
 
   ## Examples
