@@ -110,4 +110,46 @@ defmodule Jetstream.API.StreamTest do
     assert {:error, reason} = Stream.create(:gnat, %Stream{name: "\ttest-tab", subjects: ["foo"]})
     assert reason == "invalid name: cannot contain '.', '>', '*', spaces or tabs"
   end
+
+  describe "get_message/3" do
+    test "error if both seq and last_by_subj are used" do
+      assert {:error, reason} = Stream.get_message(:gnat, "foo", %{seq: 1, last_by_subj: "bar"})
+      assert reason == "To get a message you must use only one of `seq` or `last_by_subj`"
+    end
+
+    test "decodes message data" do
+      stream = %Stream{name: "GET_MESSAGE_TEST", subjects: ["GET_MESSAGE_TEST.*"]}
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+      assert :ok = Gnat.pub(:gnat, "GET_MESSAGE_TEST.foo", "hi there")
+
+      assert {:ok, response} =
+               Stream.get_message(:gnat, "GET_MESSAGE_TEST", %{
+                 last_by_subj: "GET_MESSAGE_TEST.foo"
+               })
+
+      %{
+        data: "hi there",
+        hdrs: nil,
+        subject: "GET_MESSAGE_TEST.foo",
+        time: %DateTime{}
+      } = response
+
+      assert is_number(response.seq)
+
+      assert :ok = Stream.delete(:gnat, "GET_MESSAGE_TEST")
+    end
+
+    test "decodes message data with headers" do
+      stream = %Stream{name: "GET_MESSAGE_TEST", subjects: ["GET_MESSAGE_TEST.*"]}
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+      assert :ok = Gnat.pub(:gnat, "GET_MESSAGE_TEST.bar", "hi there", headers: [{"foo", "bar"}])
+
+      assert {:ok, response} =
+               Stream.get_message(:gnat, "GET_MESSAGE_TEST", %{
+                 last_by_subj: "GET_MESSAGE_TEST.bar"
+               })
+
+      assert response.hdrs =~ "foo: bar"
+    end
+  end
 end

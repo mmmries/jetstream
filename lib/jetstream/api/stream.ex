@@ -182,6 +182,17 @@ defmodule Jetstream.API.Stream do
               }
         }
 
+  @typedoc """
+  * `code` - HTTP like error code in the 300 to 500 range
+  * `description` - A human friendly description of the error
+  * `err_code` - The NATS error code unique to each kind of error
+  """
+  @type response_error :: %{
+          :code => non_neg_integer(),
+          optional(:description) => binary(),
+          optional(:err_code) => non_neg_integer()
+        }
+
   @type source_info :: %{
           :active => nanoseconds(),
           :lag => non_neg_integer(),
@@ -190,11 +201,7 @@ defmodule Jetstream.API.Stream do
             api: binary(),
             deliver: binary()
           },
-          optional(:error) => %{
-            :code => integer(),
-            optional(:err_code) => nil | non_neg_integer(),
-            optional(:description) => nil | binary()
-          }
+          optional(:error) => response_error()
         }
 
   @type streams :: %{
@@ -202,6 +209,30 @@ defmodule Jetstream.API.Stream do
           offset: non_neg_integer(),
           streams: list(binary()),
           total: non_neg_integer()
+        }
+
+  @typedoc """
+  * `seq` - Stream sequence number of the message to retrieve, cannot be combined with `last_by_subj`
+  * `last_by_subj` - Retrieves the last message for a given subject, cannot be combined with `seq`
+  """
+  @type message_access_method :: %{
+          optional(:seq) => non_neg_integer(),
+          optional(:last_by_subj) => binary()
+        }
+
+  @typedoc """
+  * `data` - The decoded message payload
+  * `subject` - The subject the message was originally received on
+  * `time` - The time the message was received
+  * `seq` - The sequence number of the message in the Stream
+  * `hdrs` - The decoded headers for the message
+  """
+  @type message_response :: %{
+          :data => any(),
+          :seq => non_neg_integer(),
+          :subject => binary(),
+          :time => DateTime.t(),
+          :hdrs => nil | binary()
         }
 
   @doc """
@@ -305,6 +336,26 @@ defmodule Jetstream.API.Stream do
     end
   end
 
+  @doc """
+  Get a message from the stream either by "stream sequence number" or the "last message for a given subject"
+  """
+  @spec get_message(conn :: Gnat.t(), stream_name :: binary(), method :: message_access_method()) ::
+          {:ok, message_response()} | {:error, response_error()}
+  def get_message(conn, stream_name, method) when is_map(method) do
+    with :ok <- validate_message_access_method(method),
+         {:ok, %{"message" => message}} <-
+           request(conn, "$JS.API.STREAM.MSG.GET.#{stream_name}", Jason.encode!(method)) do
+      {:ok,
+       %{
+         data: decode_base64(message["data"]),
+         seq: message["seq"],
+         subject: message["subject"],
+         time: to_datetime(message["time"]),
+         hdrs: decode_base64(message["hdrs"])
+       }}
+    end
+  end
+
   defp to_state(state) do
     %{
       bytes: Map.fetch!(state, "bytes"),
@@ -385,6 +436,14 @@ defmodule Jetstream.API.Stream do
 
       true ->
         :ok
+    end
+  end
+
+  defp validate_message_access_method(method) do
+    if map_size(method) == 1 do
+      :ok
+    else
+      {:error, "To get a message you must use only one of `seq` or `last_by_subj`"}
     end
   end
 end
