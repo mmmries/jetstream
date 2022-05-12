@@ -1,4 +1,4 @@
-defmodule Jetstream.API.StreamTest do
+defmodule Jetstream.API.KVTest do
   use Jetstream.ConnCase
   alias Jetstream.API.KV
 
