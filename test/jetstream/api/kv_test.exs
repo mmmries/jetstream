@@ -1,5 +1,5 @@
 defmodule Jetstream.API.KVTest do
-  use Jetstream.ConnCase
+  use Jetstream.ConnCase, min_server_version: "2.6.2"
   alias Jetstream.API.KV
 
   @moduletag with_gnat: :gnat

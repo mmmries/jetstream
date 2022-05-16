@@ -5,17 +5,47 @@ defmodule Jetstream.ConnCase do
 
   use ExUnit.CaseTemplate
 
-  using do
+  using(opts) do
+    tags = module_tags(opts)
+
     quote do
       import Jetstream.ConnCase
 
-      @moduletag capture_log: true
+      @moduletag unquote(tags)
     end
+  end
+
+  defp module_tags(opts) do
+    Enum.reduce(opts, [capture_log: true], fn opt, acc ->
+      add_module_tag(acc, opt)
+    end)
+  end
+
+  defp add_module_tag(tags, {:min_server_version, min_version}) do
+    if server_version_incompatible?(min_version) do
+      Keyword.put(tags, :incompatible, true)
+    else
+      tags
+    end
+  end
+
+  defp add_module_tag(tags, _opt), do: tags
+
+  defp get_server_version(conn) do
+    Gnat.server_info(conn).version
+  end
+
+  defp server_version_incompatible?(min_version) do
+    {:ok, conn} = Gnat.start_link()
+    match? = Version.match?(get_server_version(conn), ">= #{min_version}")
+    :ok = Gnat.stop(conn)
+    !match?
   end
 
   setup tags do
     if arg = Map.get(tags, :with_gnat) do
       conn = start_gnat!(arg)
+
       %{conn: conn}
     else
       :ok

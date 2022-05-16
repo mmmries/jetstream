@@ -1,4 +1,4 @@
-ExUnit.start()
+ExUnit.start(exclude: [:incompatible])
 
 # set assert_receive default timeout
 Application.put_env(:ex_unit, :assert_receive_timeout, 1_000)
