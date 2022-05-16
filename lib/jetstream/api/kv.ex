@@ -10,6 +10,16 @@ defmodule Jetstream.API.KV do
   @subject_prefix "$KV."
   @two_minutes_in_nanoseconds 1_200_000_000
 
+  @type bucket_options ::
+          {:history, non_neg_integer()}
+          | {:ttl, non_neg_integer()}
+          | {:max_bucket_size, non_neg_integer()}
+          | {:max_value_size, non_neg_integer()}
+          | {:description, binary()}
+          | {:replicas, non_neg_integer()}
+          | {:storage, :file | :memory}
+          | {:placement, Stream.placement()}
+
   @doc """
   Create a new Key/Value bucket. Can include the following options
 
@@ -26,7 +36,7 @@ defmodule Jetstream.API.KV do
 
      iex>{:ok, info} = Jetstream.API.KV.create_bucket(:gnat, "my_bucket")
   """
-  @spec create_bucket(conn :: Gnat.t(), bucket_name :: binary(), params :: keyword()) ::
+  @spec create_bucket(conn :: Gnat.t(), bucket_name :: binary(), params :: [bucket_options()]) ::
           {:ok, Stream.info()} | {:error, any()}
   def create_bucket(conn, bucket_name, params \\ []) do
     # The primary NATS docs don't provide information about how to interact
