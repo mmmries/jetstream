@@ -27,6 +27,8 @@ defmodule Jetstream.API.Stream do
     refusing new messages if the Stream exceeds this size.
   * `:max_consumers` - how many Consumers can be defined for a given Stream, -1 for unlimited.
   * `:max_msg_size` - the largest message that will be accepted by the Stream.
+  * `:max_msgs_per_subject` - For wildcard streams ensure that for every unique subject this many messages are kept - a per subject retention limit.
+    Only available on nats-server versions greater than 2.3.0
   * `:max_msgs` - how many messages may be in a Stream. Adheres to `:discard`, removing oldest or refusing
     new messages if the Stream exceeds this number of messages
   * `:mirror` - maintains a 1:1 mirror of another stream with name matching this property.  When a mirror
@@ -87,6 +89,11 @@ defmodule Jetstream.API.Stream do
 
   @type nanoseconds :: non_neg_integer()
 
+  @type placement :: %{
+          :cluster => binary(),
+          optional(:tags) => list(binary())
+        }
+
   @type t :: %__MODULE__{
           allow_rollup_hdrs: boolean(),
           deny_delete: boolean(),
@@ -99,16 +106,12 @@ defmodule Jetstream.API.Stream do
           max_consumers: integer(),
           max_msg_size: nil | integer(),
           max_msgs: integer(),
+          max_msgs_per_subject: integer(),
           mirror: nil | source(),
           name: binary(),
           no_ack: nil | boolean(),
           num_replicas: pos_integer(),
-          placement:
-            nil
-            | %{
-                :cluster => binary(),
-                optional(:tags) => list(binary())
-              },
+          placement: nil | placement(),
           retention: :limits | :workqueue | :interest,
           sealed: boolean(),
           sources: nil | list(source()),
@@ -234,6 +237,18 @@ defmodule Jetstream.API.Stream do
           :time => DateTime.t(),
           :hdrs => nil | binary()
         }
+
+  # @doc """
+  # Initialize a Stream struct
+
+  # ## Examples
+
+  #     iex> %Stream{} = Jetstream.API.Stream.new(:gnat, name: "NEW_STREAM", subjects: ["NEW_STREAM.subjects"])
+  # """
+  # @spec new(conn :: Gnat.t(), fields :: keyword()) :: t()
+  # def new(conn, fields \\ []) do
+  #   %__MODULE__{}
+  # end
 
   @doc """
   Creates a new Stream.
@@ -382,6 +397,7 @@ defmodule Jetstream.API.Stream do
       max_bytes: Map.fetch!(stream, "max_bytes"),
       max_consumers: Map.fetch!(stream, "max_consumers"),
       max_msg_size: Map.get(stream, "max_msg_size"),
+      max_msgs_per_subject: Map.get(stream, "max_msgs_per_subject", -1),
       max_msgs: Map.fetch!(stream, "max_msgs"),
       mirror: Map.get(stream, "mirror"),
       name: Map.fetch!(stream, "name"),
