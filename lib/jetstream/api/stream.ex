@@ -231,7 +231,7 @@ defmodule Jetstream.API.Stream do
   * `hdrs` - The decoded headers for the message
   """
   @type message_response :: %{
-          :data => any(),
+          :data => nil | binary(),
           :seq => non_neg_integer(),
           :subject => binary(),
           :time => DateTime.t(),

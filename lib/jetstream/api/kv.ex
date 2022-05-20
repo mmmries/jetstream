@@ -141,7 +141,7 @@ defmodule Jetstream.API.KV do
       iex>"my_value" = Jetstream.API.KV.get_value(:gnat, "my_bucket", "my_key")
   """
   @spec get_value(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) ::
-          binary() | {:error, any()}
+          binary() | nil | {:error, any()}
   def get_value(conn, bucket_name, key) do
     case Stream.get_message(conn, stream_name(bucket_name), %{
            last_by_subj: key_name(bucket_name, key)
