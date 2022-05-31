@@ -319,6 +319,31 @@ defmodule Jetstream.API.Consumer do
     end
   end
 
+  @doc """
+  Requests a next message from a stream to be consumed.
+  """
+  @spec next_message(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          consumer_name :: binary(),
+          reply_to :: String.t(),
+          no_wait :: boolean()
+        ) :: :ok
+  def next_message(
+        conn,
+        stream_name,
+        consumer_name,
+        reply_to,
+        no_wait \\ false
+      ) do
+    Gnat.pub(
+      conn,
+      "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
+      %{batch: 1, no_wait: no_wait} |> Jason.encode!(),
+      reply_to: reply_to
+    )
+  end
+
   defp create_payload(%__MODULE__{} = cons) do
     %{
       config: %{

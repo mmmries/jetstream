@@ -1,4 +1,4 @@
-defmodule Jetstream.Broadway.ProducerTest do
+defmodule OffBroadway.Jetstream.ProducerTest do
   use Jetstream.ConnCase
 
   alias Jetstream.API.{Consumer, Stream}
@@ -30,24 +30,29 @@ defmodule Jetstream.Broadway.ProducerTest do
       consumer = %Consumer{stream_name: stream_name, durable_name: consumer_name}
       {:ok, _response} = Consumer.create(:gnat, consumer)
 
-      %{
-        stream_name: stream_name,
-        consumer_name: consumer_name
-      }
-    end
-
-    test "receives messages", %{stream_name: stream_name, consumer_name: consumer_name} do
       start_broadway(stream_name, consumer_name)
 
-      Process.sleep(1_000)
+      %{}
+    end
 
-      for _ <- 1..10, do: {:ok, _} = Gnat.request(:gnat, "ack", "hello") |> IO.inspect()
+    test "receive messages when the queue has less than the demand" do
+      for i <- 1..5, do: {:ok, _} = Gnat.request(:gnat, "ack", "message #{i}")
 
-      Process.sleep(11_000)
+      for i <- 1..5 do
+        expected_message = "message #{i}"
 
-      for _ <- 1..10, do: {:ok, _} = Gnat.request(:gnat, "ack", "hello") |> IO.inspect()
+        assert_receive {:message_handled, ^expected_message}, 10_000
+      end
+    end
 
-      Process.sleep(11_000)
+    test "keep receiving messages when the queue has more than the demand" do
+      for i <- 1..20, do: {:ok, _} = Gnat.request(:gnat, "ack", "message #{i}")
+
+      for i <- 1..20 do
+        expected_message = "message #{i}"
+
+        assert_receive {:message_handled, ^expected_message}, 10_000
+      end
     end
   end
 
@@ -61,9 +66,10 @@ defmodule Jetstream.Broadway.ProducerTest do
         context: %{test_pid: self()},
         producer: [
           module: {
-            Jetstream.Broadway.Producer,
+            OffBroadway.Jetstream.Producer,
             [
-              receive_interval: 1_000,
+              receive_interval: 100,
+              receive_timeout: 100,
               connection_name: :gnat,
               consumer_name: consumer_name,
               stream_name: stream_name,

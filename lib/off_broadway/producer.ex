@@ -1,21 +1,35 @@
 with {:module, _} <- Code.ensure_compiled(Broadway) do
-  defmodule Jetstream.Broadway.Producer do
+  defmodule OffBroadway.Jetstream.Producer do
     @moduledoc """
     A GenStage producer that continuously receives messages from a NATS JetStream
     and acknowledges them after being successfully processed.
     """
 
     use GenStage
+
+    alias Broadway.Message
     alias Broadway.Producer
-    alias Jetstream.Broadway.Acknowledger
+    alias OffBroadway.Jetstream.Acknowledger
 
     @behaviour Producer
 
-    @default_receive_interval 5000
+    @default_receive_interval 5_000
+    @default_receive_timeout 5_000
+
+    @impl Producer
+    def prepare_for_start(_module, broadway_opts) do
+      {producer_module, module_opts} = broadway_opts[:producer][:module]
+
+      broadway_opts_with_defaults =
+        put_in(broadway_opts, [:producer, :module], {producer_module, module_opts})
+
+      {[], broadway_opts_with_defaults}
+    end
 
     @impl true
     def init(opts) do
       receive_interval = opts[:receive_interval] || @default_receive_interval
+      receive_timeout = opts[:receive_timeout] || @default_receive_timeout
 
       connection_name = opts[:connection_name]
 
@@ -24,25 +38,22 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
       listening_topic = new_listening_topic(opts[:inbox_prefix])
 
-      opts
-      |> Acknowledger.init()
-      |> case do
-        {:ok, ack_ref} ->
-          {:ok, sid} = Gnat.sub(connection_name, self(), listening_topic)
-
-          {:producer,
-           %{
-             demand: 0,
-             receive_timer: nil,
-             receive_interval: receive_interval,
-             connection_name: connection_name,
-             stream_name: stream_name,
-             consumer_name: consumer_name,
-             listening_topic: listening_topic,
-             subscription_id: sid,
-             ack_ref: ack_ref
-           }}
-
+      with {:ok, ack_ref} <- Acknowledger.init(opts),
+           {:ok, sid} <- Gnat.sub(connection_name, self(), listening_topic) do
+        {:producer,
+         %{
+           demand: 0,
+           receive_timer: nil,
+           receive_interval: receive_interval,
+           receive_timeout: receive_timeout,
+           connection_name: connection_name,
+           stream_name: stream_name,
+           consumer_name: consumer_name,
+           listening_topic: listening_topic,
+           subscription_id: sid,
+           ack_ref: ack_ref
+         }}
+      else
         {:error, message} ->
           raise ArgumentError, message
       end
@@ -54,16 +65,6 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     defp nuid do
       :crypto.strong_rand_bytes(12) |> Base.encode64()
-    end
-
-    @impl true
-    def prepare_for_start(_module, broadway_opts) do
-      {producer_module, module_opts} = broadway_opts[:producer][:module]
-
-      broadway_opts_with_defaults =
-        put_in(broadway_opts, [:producer, :module], {producer_module, module_opts})
-
-      {[], broadway_opts_with_defaults}
     end
 
     @impl true
@@ -108,32 +109,46 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       {:noreply, [], state}
     end
 
-    defp receive_messages_from_jetstream(state, _total_demand) do
+    defp receive_messages_from_jetstream(
+           %{listening_topic: listening_topic} = state,
+           _total_demand
+         ) do
       :ok =
-        Gnat.pub(
+        Jetstream.API.Consumer.next_message(
           state.connection_name,
-          "$JS.API.CONSUMER.MSG.NEXT.#{state.stream_name}.#{state.consumer_name}",
-          %{batch: 1, no_wait: true} |> Jason.encode!(),
-          reply_to: state.listening_topic
+          state.stream_name,
+          state.consumer_name,
+          listening_topic,
+          true
         )
 
       receive do
         {:msg, %{reply_to: "$JS.ACK" <> _} = msg} -> {:ok, msg}
       after
-        5_000 ->
+        state.receive_timeout ->
           {:error, :timeout}
       end
       |> case do
-        {:error, _} = error ->
-          IO.inspect(error)
-
+        {:error, _} = _error ->
           []
 
         {:ok, response} ->
-          IO.inspect(response)
-
-          []
+          wrap_received_messages([response], state.ack_ref)
       end
+    end
+
+    defp wrap_received_messages(jetstream_messages, ack_ref) do
+      Enum.map(jetstream_messages, &jetstream_msg_to_broadway_msg(&1, ack_ref))
+    end
+
+    defp jetstream_msg_to_broadway_msg(jetstream_message, ack_ref) do
+      %Message{
+        data: jetstream_message.body,
+        metadata: %{
+          topic: jetstream_message.topic
+        },
+        acknowledger: {Acknowledger, ack_ref, %{reply_to: jetstream_message.reply_to}}
+      }
     end
 
     defp schedule_receive_messages(interval) do
