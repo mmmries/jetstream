@@ -21,7 +21,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
 
     setup do
       stream_name = "BROADWAY_TEST_STREAM"
-      stream_subjects = ["ack", "nack", "skip"]
+      stream_subjects = ["broadway"]
       consumer_name = "BROADWAY_TEST_CONSUMER"
 
       stream = %Stream{name: stream_name, subjects: stream_subjects}
@@ -36,7 +36,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
     end
 
     test "receive messages when the queue has less than the demand" do
-      for i <- 1..5, do: {:ok, _} = Gnat.request(:gnat, "ack", "message #{i}")
+      for i <- 1..5, do: {:ok, _} = Gnat.request(:gnat, "broadway", "message #{i}")
 
       for i <- 1..5 do
         expected_message = "message #{i}"
@@ -46,7 +46,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
     end
 
     test "keep receiving messages when the queue has more than the demand" do
-      for i <- 1..20, do: {:ok, _} = Gnat.request(:gnat, "ack", "message #{i}")
+      for i <- 1..20, do: {:ok, _} = Gnat.request(:gnat, "broadway", "message #{i}")
 
       for i <- 1..20 do
         expected_message = "message #{i}"
@@ -56,12 +56,12 @@ defmodule OffBroadway.Jetstream.ProducerTest do
     end
 
     test "keep trying to receive new messages when the queue is empty" do
-      {:ok, _} = Gnat.request(:gnat, "ack", "message 1")
+      {:ok, _} = Gnat.request(:gnat, "broadway", "message 1")
 
       assert_receive {:message_handled, "message 1"}
 
-      {:ok, _} = Gnat.request(:gnat, "ack", "message 2")
-      {:ok, _} = Gnat.request(:gnat, "ack", "message 3")
+      {:ok, _} = Gnat.request(:gnat, "broadway", "message 2")
+      {:ok, _} = Gnat.request(:gnat, "broadway", "message 3")
 
       assert_receive {:message_handled, "message 2"}
       assert_receive {:message_handled, "message 3"}
@@ -77,7 +77,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
       :sys.resume(producer)
       Task.await(task)
 
-      {:ok, _} = Gnat.request(:gnat, "ack", "message")
+      {:ok, _} = Gnat.request(:gnat, "broadway", "message")
 
       refute_receive {:message_handled, "message"}
     end
@@ -95,7 +95,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
           module: {
             OffBroadway.Jetstream.Producer,
             [
-              receive_interval: 200,
+              receive_interval: 250,
               connection_name: :gnat,
               consumer_name: consumer_name,
               stream_name: stream_name,
