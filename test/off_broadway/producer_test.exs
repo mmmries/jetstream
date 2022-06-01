@@ -30,9 +30,9 @@ defmodule OffBroadway.Jetstream.ProducerTest do
       consumer = %Consumer{stream_name: stream_name, durable_name: consumer_name}
       {:ok, _response} = Consumer.create(:gnat, consumer)
 
-      start_broadway(stream_name, consumer_name)
+      producer_name = start_broadway(stream_name, consumer_name)
 
-      %{}
+      %{producer_name: producer_name}
     end
 
     test "receive messages when the queue has less than the demand" do
@@ -41,7 +41,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
       for i <- 1..5 do
         expected_message = "message #{i}"
 
-        assert_receive {:message_handled, ^expected_message}, 10_000
+        assert_receive {:message_handled, ^expected_message}
       end
     end
 
@@ -51,8 +51,35 @@ defmodule OffBroadway.Jetstream.ProducerTest do
       for i <- 1..20 do
         expected_message = "message #{i}"
 
-        assert_receive {:message_handled, ^expected_message}, 10_000
+        assert_receive {:message_handled, ^expected_message}
       end
+    end
+
+    test "keep trying to receive new messages when the queue is empty" do
+      {:ok, _} = Gnat.request(:gnat, "ack", "message 1")
+
+      assert_receive {:message_handled, "message 1"}
+
+      {:ok, _} = Gnat.request(:gnat, "ack", "message 2")
+      {:ok, _} = Gnat.request(:gnat, "ack", "message 3")
+
+      assert_receive {:message_handled, "message 2"}
+      assert_receive {:message_handled, "message 3"}
+    end
+
+    test "stop trying to receive new messages after start draining", %{
+      producer_name: producer_name
+    } do
+      [producer] = Broadway.producer_names(producer_name)
+
+      :sys.suspend(producer)
+      task = Task.async(fn -> Broadway.Topology.ProducerStage.drain(producer) end)
+      :sys.resume(producer)
+      Task.await(task)
+
+      {:ok, _} = Gnat.request(:gnat, "ack", "message")
+
+      refute_receive {:message_handled, "message"}
     end
   end
 
@@ -68,8 +95,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
           module: {
             OffBroadway.Jetstream.Producer,
             [
-              receive_interval: 100,
-              receive_timeout: 1_000,
+              receive_interval: 200,
               connection_name: :gnat,
               consumer_name: consumer_name,
               stream_name: stream_name,

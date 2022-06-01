@@ -7,7 +7,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     @behaviour Acknowledger
 
     @typedoc """
-    Acknowledgement data for a `Broadway.Message`.
+    Acknowledgement data to be placed in `Broadway.Message`.
     """
     @type ack_data :: %{
             :reply_to => String.t(),
@@ -17,6 +17,14 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     @typedoc """
     An acknowledgement action.
+
+    ## Options
+
+    * `ack` - acknowledges a message was completely handled.
+
+    * `nack` - signals that the message will not be processed now and will be redelivered.
+
+    * `term` - tells the server to stop redelivery of a message without acknowledging it.
     """
     @type ack_option :: :ack | :nack | :term
 
@@ -64,7 +72,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     end
 
     @doc """
-    Returns an `acknowledger` to be put on a `Broadway.Message`.
+    Returns an `acknowledger` to be put in `Broadway.Message`.
     """
     @spec builder(ack_ref()) :: (String.t() -> {__MODULE__, ack_ref(), ack_data()})
     def builder(ack_ref) do
@@ -110,7 +118,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
            %Message{acknowledger: {_, _, %{reply_to: reply_to}}},
            connection_name
          ) do
-      Jetstream.nack(%{gnat: connection_name, reply_to: reply_to})
+      Jetstream.ack_term(%{gnat: connection_name, reply_to: reply_to})
     end
 
     @impl Acknowledger
@@ -152,9 +160,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       end
     end
 
-    defp validate_action(:ack), do: {:ok, :ack}
-    defp validate_action(:nack), do: {:ok, :nack}
-    defp validate_action(:term), do: {:ok, :term}
+    defp validate_action(action) when action in [:ack, :nack, :term], do: {:ok, action}
     defp validate_action(_), do: :error
   end
 end

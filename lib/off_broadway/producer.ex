@@ -3,6 +3,30 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     @moduledoc """
     A GenStage producer that continuously receives messages from a NATS JetStream
     and acknowledges them after being successfully processed.
+
+    ## Options
+
+    ### Connection options
+
+    * `connection_name` - The name of Gnat process or Gnat connection supervisor.
+
+    * `stream_name` - The name of stream to consume from.
+
+    * `consumer_name` - The name of consumer.
+
+    ### Message pulling options
+
+    * `receive_interval` - The duration in milliseconds for which the producer waits
+      before making a request for more messages. Defaults to 5000.
+
+    * `receive_timeout` - The maximum time to wait for NATS Jetstream to respond with
+       a requested message. Defaults to `:infinity`.
+
+    ### Acknowledger options
+
+    * `:on_success` - Configures the behaviour for successful messages. Defaults to `:ack`.
+
+    * `:on_failure` - Configures the behaviour for failed messages. Defaults to `:nack`.
     """
 
     use GenStage
@@ -14,7 +38,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     @behaviour Producer
 
     @default_receive_interval 5_000
-    @default_receive_timeout 5_000
+    @default_receive_timeout :infinity
 
     @impl Producer
     def prepare_for_start(_module, broadway_opts) do
@@ -147,12 +171,14 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     end
 
     defp jetstream_msg_to_broadway_msg(jetstream_message, ack_ref) do
+      acknowledger = Acknowledger.builder(ack_ref).(jetstream_message.reply_to)
+
       %Message{
         data: jetstream_message.body,
         metadata: %{
           topic: jetstream_message.topic
         },
-        acknowledger: {Acknowledger, ack_ref, %{reply_to: jetstream_message.reply_to}}
+        acknowledger: acknowledger
       }
     end
 
