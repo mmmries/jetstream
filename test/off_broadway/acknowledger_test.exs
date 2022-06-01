@@ -136,6 +136,44 @@ defmodule OffBroadway.Jetstream.AcknowledgerTest do
 
       for _ <- 1..5, do: assert_receive({:msg, %{body: "+TERM", topic: ^ack_topic}})
     end
+
+    test "supports custom message on_success setting", %{ack_ref: ack_ref, ack_topic: ack_topic} do
+      [first | rest] = example_messages(5, ack_ref, ack_topic)
+
+      first = Broadway.Message.configure_ack(first, on_success: :term)
+
+      Acknowledger.ack(ack_ref, [first | rest], [])
+
+      for _ <- 1..4, do: assert_receive({:msg, %{body: "", topic: ^ack_topic}})
+
+      assert_receive({:msg, %{body: "+TERM", topic: ^ack_topic}})
+    end
+
+    test "supports custom message on_failure setting", %{ack_ref: ack_ref, ack_topic: ack_topic} do
+      [first | rest] = example_messages(5, ack_ref, ack_topic)
+
+      first = Broadway.Message.configure_ack(first, on_failure: :term)
+
+      Acknowledger.ack(ack_ref, [], [first | rest])
+
+      for _ <- 1..4, do: assert_receive({:msg, %{body: "-NAK", topic: ^ack_topic}})
+
+      assert_receive({:msg, %{body: "+TERM", topic: ^ack_topic}})
+    end
+
+    @tag on_failure: :ack
+    test "groups successful and failed messages by action", %{
+      ack_ref: ack_ref,
+      ack_topic: ack_topic
+    } do
+      {successful, failed} =
+        example_messages(10, ack_ref, ack_topic)
+        |> Enum.split(5)
+
+      :ok = Acknowledger.ack(ack_ref, successful, failed)
+
+      for _ <- 1..10, do: assert_receive({:msg, %{body: "", topic: ^ack_topic}})
+    end
   end
 
   defp example_messages(quantity, ack_ref, ack_topic) do

@@ -2,7 +2,6 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
   defmodule OffBroadway.Jetstream.Acknowledger do
     @moduledoc false
     alias Broadway.Acknowledger
-    alias Broadway.Message
 
     @behaviour Acknowledger
 
@@ -83,8 +82,12 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     def ack(ack_ref, successful, failed) do
       config = get_config(ack_ref)
 
-      apply_ack_func(config.on_success, successful, config.connection_name)
-      apply_ack_func(config.on_failure, failed, config.connection_name)
+      success_actions = group_actions_reply_topics(successful, :on_success, config)
+      failure_actions = group_actions_reply_topics(failed, :on_failure, config)
+
+      success_actions
+      |> Map.merge(failure_actions, fn _, a, b -> a ++ b end)
+      |> ack_messages(config)
 
       :ok
     end
@@ -93,13 +96,32 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       :persistent_term.get({__MODULE__, reference})
     end
 
-    defp apply_ack_func(action, messages, connection_name) when is_list(messages) do
-      for message <- messages, do: apply_ack_func(action, message, connection_name)
+    defp group_actions_reply_topics(messages, key, config) do
+      Enum.group_by(messages, &group_acknowledger(&1, key, config), &extract_reply_to/1)
+    end
+
+    defp group_acknowledger(%{acknowledger: {_, _, ack_data}}, key, config) do
+      Map.get_lazy(ack_data, key, fn -> config_action(key, config) end)
+    end
+
+    defp config_action(:on_success, %{on_success: action}), do: action
+    defp config_action(:on_failure, %{on_failure: action}), do: action
+
+    defp extract_reply_to(message) do
+      {_, _, %{reply_to: reply_to}} = message.acknowledger
+      reply_to
+    end
+
+    defp ack_messages(actions_and_reply_topics, config) do
+      Enum.each(actions_and_reply_topics, fn {action, reply_topics} ->
+        reply_topics
+        |> Enum.each(&apply_ack_func(action, &1, config.connection_name))
+      end)
     end
 
     defp apply_ack_func(
            :ack,
-           %Message{acknowledger: {_, _, %{reply_to: reply_to}}},
+           reply_to,
            connection_name
          ) do
       Jetstream.ack(%{gnat: connection_name, reply_to: reply_to})
@@ -107,7 +129,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     defp apply_ack_func(
            :nack,
-           %Message{acknowledger: {_, _, %{reply_to: reply_to}}},
+           reply_to,
            connection_name
          ) do
       Jetstream.nack(%{gnat: connection_name, reply_to: reply_to})
@@ -115,7 +137,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     defp apply_ack_func(
            :term,
-           %Message{acknowledger: {_, _, %{reply_to: reply_to}}},
+           reply_to,
            connection_name
          ) do
       Jetstream.ack_term(%{gnat: connection_name, reply_to: reply_to})
