@@ -109,32 +109,37 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       {:noreply, [], state}
     end
 
-    defp receive_messages_from_jetstream(
-           %{listening_topic: listening_topic} = state,
-           _total_demand
-         ) do
-      :ok =
-        Jetstream.API.Consumer.next_message(
-          state.connection_name,
-          state.stream_name,
-          state.consumer_name,
-          listening_topic,
-          true
-        )
+    defp receive_messages_from_jetstream(state, total_demand) do
+      request_messages_from_jetstream(total_demand, state)
 
-      receive do
-        {:msg, %{reply_to: "$JS.ACK" <> _} = msg} -> {:ok, msg}
-      after
-        state.receive_timeout ->
-          {:error, :timeout}
-      end
-      |> case do
-        {:error, _} = _error ->
-          []
+      do_receive_messages(total_demand, state.listening_topic, state.receive_timeout)
+      |> wrap_received_messages(state.ack_ref)
+    end
 
-        {:ok, response} ->
-          wrap_received_messages([response], state.ack_ref)
-      end
+    defp request_messages_from_jetstream(total_demand, state) do
+      Jetstream.API.Consumer.next_message(
+        state.connection_name,
+        state.stream_name,
+        state.consumer_name,
+        state.listening_topic,
+        total_demand,
+        true
+      )
+    end
+
+    defp do_receive_messages(total_demand, listening_topic, receive_timeout) do
+      Enum.reduce_while(1..total_demand, [], fn _, acc ->
+        receive do
+          {:msg, %{reply_to: "$JS.ACK" <> _} = msg} ->
+            {:cont, [msg | acc]}
+
+          {:msg, %{topic: ^listening_topic}} ->
+            {:halt, acc}
+        after
+          receive_timeout ->
+            {:halt, acc}
+        end
+      end)
     end
 
     defp wrap_received_messages(jetstream_messages, ack_ref) do

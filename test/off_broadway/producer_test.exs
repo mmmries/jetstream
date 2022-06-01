@@ -69,7 +69,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
             OffBroadway.Jetstream.Producer,
             [
               receive_interval: 100,
-              receive_timeout: 100,
+              receive_timeout: 1_000,
               connection_name: :gnat,
               consumer_name: consumer_name,
               stream_name: stream_name,

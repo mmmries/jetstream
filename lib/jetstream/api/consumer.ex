@@ -327,6 +327,7 @@ defmodule Jetstream.API.Consumer do
           stream_name :: binary(),
           consumer_name :: binary(),
           reply_to :: String.t(),
+          batch :: non_neg_integer(),
           no_wait :: boolean()
         ) :: :ok
   def next_message(
@@ -334,12 +335,13 @@ defmodule Jetstream.API.Consumer do
         stream_name,
         consumer_name,
         reply_to,
+        batch \\ 1,
         no_wait \\ false
       ) do
     Gnat.pub(
       conn,
       "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
-      %{batch: 1, no_wait: no_wait} |> Jason.encode!(),
+      %{batch: batch, no_wait: no_wait} |> Jason.encode!(),
       reply_to: reply_to
     )
   end
