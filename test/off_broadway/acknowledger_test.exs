@@ -30,13 +30,13 @@ defmodule OffBroadway.Jetstream.AcknowledgerTest do
 
   describe "configure/3" do
     test "raise on unsupported configure option" do
-      assert_raise(ArgumentError, "unsupported configure option :on_other", fn ->
+      assert_raise(ArgumentError, "unsupported option :on_other", fn ->
         Acknowledger.configure(:ack_ref, %{}, on_other: :ack)
       end)
     end
 
     test "raise on unsupported on_success value" do
-      error_msg = "expected :on_success to be a valid acknowledgement option, got: :unknown"
+      error_msg = ":unknown is not a valid :on_success option"
 
       assert_raise(ArgumentError, error_msg, fn ->
         Acknowledger.configure(:ack_ref, %{}, on_success: :unknown)
@@ -44,7 +44,7 @@ defmodule OffBroadway.Jetstream.AcknowledgerTest do
     end
 
     test "raise on unsupported on_failure value" do
-      error_msg = "expected :on_failure to be a valid acknowledgement option, got: :unknown"
+      error_msg = ":unknown is not a valid :on_failure option"
 
       assert_raise(ArgumentError, error_msg, fn ->
         Acknowledger.configure(:ack_ref, %{}, on_failure: :unknown)

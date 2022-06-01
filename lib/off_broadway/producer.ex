@@ -64,6 +64,8 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
       with {:ok, ack_ref} <- Acknowledger.init(opts),
            {:ok, sid} <- Gnat.sub(connection_name, self(), listening_topic) do
+        send(self(), :connect)
+
         {:producer,
          %{
            demand: 0,
@@ -71,6 +73,8 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
            receive_interval: receive_interval,
            receive_timeout: receive_timeout,
            connection_name: connection_name,
+           connection_pid: nil,
+           status: :disconnected,
            stream_name: stream_name,
            consumer_name: consumer_name,
            listening_topic: listening_topic,
@@ -97,12 +101,33 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     end
 
     @impl true
+    def handle_info(:connect, %{connection_name: connection_name} = state) do
+      case Process.whereis(connection_name) do
+        nil ->
+          Process.send_after(self(), :connect, 2_000)
+          {:noreply, [], state}
+
+        connection_pid ->
+          Process.monitor(connection_pid)
+
+          {:noreply, [], %{state | status: :connected, connection_pid: connection_pid}}
+      end
+    end
+
     def handle_info(:receive_messages, %{receive_timer: nil} = state) do
       {:noreply, [], state}
     end
 
     def handle_info(:receive_messages, state) do
       handle_receive_messages(%{state | receive_timer: nil})
+    end
+
+    def handle_info(
+          {:DOWN, _ref, :process, connection_pid, _reason},
+          %{connection_pid: connection_pid} = state
+        ) do
+      Process.send_after(self(), :connect, 2_000)
+      {:noreply, [], %{state | status: :disconnected, connection_pid: nil}}
     end
 
     def handle_info(_, state) do

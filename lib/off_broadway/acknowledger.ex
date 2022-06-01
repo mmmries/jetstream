@@ -78,12 +78,16 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       &{__MODULE__, ack_ref, %{reply_to: &1}}
     end
 
+    def get_config(reference) do
+      :persistent_term.get({__MODULE__, reference})
+    end
+
     @impl Acknowledger
     def ack(ack_ref, successful, failed) do
       config = get_config(ack_ref)
 
-      success_actions = group_actions_reply_topics(successful, :on_success, config)
-      failure_actions = group_actions_reply_topics(failed, :on_failure, config)
+      success_actions = group_reply_topics_by_actions(successful, :on_success, config)
+      failure_actions = group_reply_topics_by_actions(failed, :on_failure, config)
 
       success_actions
       |> Map.merge(failure_actions, fn _, a, b -> a ++ b end)
@@ -92,11 +96,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       :ok
     end
 
-    def get_config(reference) do
-      :persistent_term.get({__MODULE__, reference})
-    end
-
-    defp group_actions_reply_topics(messages, key, config) do
+    defp group_reply_topics_by_actions(messages, key, config) do
       Enum.group_by(messages, &group_acknowledger(&1, key, config), &extract_reply_to/1)
     end
 
@@ -119,27 +119,15 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       end)
     end
 
-    defp apply_ack_func(
-           :ack,
-           reply_to,
-           connection_name
-         ) do
+    defp apply_ack_func(:ack, reply_to, connection_name) do
       Jetstream.ack(%{gnat: connection_name, reply_to: reply_to})
     end
 
-    defp apply_ack_func(
-           :nack,
-           reply_to,
-           connection_name
-         ) do
+    defp apply_ack_func(:nack, reply_to, connection_name) do
       Jetstream.nack(%{gnat: connection_name, reply_to: reply_to})
     end
 
-    defp apply_ack_func(
-           :term,
-           reply_to,
-           connection_name
-         ) do
+    defp apply_ack_func(:term, reply_to, connection_name) do
       Jetstream.ack_term(%{gnat: connection_name, reply_to: reply_to})
     end
 
@@ -154,7 +142,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       Enum.map(options, fn
         {:on_success, value} -> {:on_success, validate_option!(:on_success, value)}
         {:on_failure, value} -> {:on_failure, validate_option!(:on_failure, value)}
-        {other, _value} -> raise ArgumentError, "unsupported configure option #{inspect(other)}"
+        {other, _value} -> raise ArgumentError, "unsupported option #{inspect(other)}"
       end)
     end
 
@@ -168,8 +156,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
           {:ok, result}
 
         :error ->
-          {:error,
-           "expected #{inspect(action)} to be a valid acknowledgement option, got: #{inspect(value)}"}
+          {:error, "#{inspect(value)} is not a valid #{inspect(action)} option"}
       end
     end
 
