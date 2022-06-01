@@ -6,6 +6,10 @@ defmodule OffBroadway.Jetstream.ProducerTest do
   defmodule Forwarder do
     use Broadway
 
+    def start_link(opts) do
+      Broadway.start_link(Forwarder, opts)
+    end
+
     def handle_message(_, message, %{test_pid: test_pid}) do
       send(test_pid, {:message_handled, message.data})
       message
@@ -86,36 +90,35 @@ defmodule OffBroadway.Jetstream.ProducerTest do
   defp start_broadway(stream_name, consumer_name) do
     name = new_unique_name()
 
-    {:ok, _pid} =
-      Broadway.start_link(
-        Forwarder,
-        name: name,
-        context: %{test_pid: self()},
-        producer: [
-          module: {
-            OffBroadway.Jetstream.Producer,
-            [
-              receive_interval: 250,
-              connection_name: :gnat,
-              consumer_name: consumer_name,
-              stream_name: stream_name,
-              inbox_prefix: "_INBOX.",
-              test_pid: self()
-            ]
-          },
-          concurrency: 1
-        ],
-        processors: [
-          default: [concurrency: 1]
-        ],
-        batchers: [
-          default: [
-            batch_size: 10,
-            batch_timeout: 50,
-            concurrency: 1
-          ]
-        ]
-      )
+    start_supervised(
+      {Forwarder,
+       name: name,
+       context: %{test_pid: self()},
+       producer: [
+         module: {
+           OffBroadway.Jetstream.Producer,
+           [
+             receive_interval: 250,
+             connection_name: :gnat,
+             consumer_name: consumer_name,
+             stream_name: stream_name,
+             inbox_prefix: "_INBOX.",
+             test_pid: self()
+           ]
+         },
+         concurrency: 1
+       ],
+       processors: [
+         default: [concurrency: 1]
+       ],
+       batchers: [
+         default: [
+           batch_size: 10,
+           batch_timeout: 50,
+           concurrency: 1
+         ]
+       ]}
+    )
 
     name
   end
