@@ -254,7 +254,7 @@ defmodule Jetstream.API.ConsumerTest do
       reply_subject: reply_subject
     } do
       Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject,
-        expires: 10_000_000
+        expires: 1_000_000
       )
 
       assert_receive {:msg, %{body: "", topic: ^reply_subject}}
