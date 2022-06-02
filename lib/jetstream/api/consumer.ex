@@ -328,13 +328,36 @@ defmodule Jetstream.API.Consumer do
   * `batch` - How many messages to receive. They are going to be sent on the `reply_to` subject
     separately. Defaults to 1.
 
-  * `expires` - Time in nanoseconds the request will be kept in the server. Useful when you poll
-    the server frequently and do not want the pull requests to accumulate. By default the pull
+  * `expires` - Time in nanoseconds the request will be kept in the server. Once this time passes
+    a message with empty body and topic set to `reply_to` subject is sent. Useful when polling
+    the server frequently and not wanting the pull requests to accumulate. By default the pull
     request stays in the server until a message comes.
 
   * `no_wait` - Boolean value which indicates whether the pull request should be accumulated on
-    the server. When set to true and no message is present to be consumed, an error message is
-    sent. Defaults to false.
+    the server. When set to true and no message is present to be consumed, a message with empty
+    body and topic value set to `reply_to` is sent. Defaults to false.
+
+  ## Examples
+
+      iex> {:ok, _response} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, _response} = Jetstream.API.Consumer.create(:gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
+      iex> {:ok, _sid} = Gnat.sub(:gnat, self(), "reply_subject")
+      iex> :ok = Jetstream.API.Consumer.request_next_message(:gnat, "stream", "consumer", "reply_subject")
+      iex> :ok = Gnat.pub(:gnat, "subject", "message")
+      iex> assert_receive {:msg, %{body: "message", topic: "subject"}}
+
+      iex> {:ok, _response} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, _response} = Jetstream.API.Consumer.create(:gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
+      iex> {:ok, _sid} = Gnat.sub(:gnat, self(), "reply_subject")
+      iex> :ok = Jetstream.API.Consumer.request_next_message(:gnat, "stream", "consumer", "reply_subject", no_wait: true)
+      iex> assert_receive {:msg, %{body: "", topic: "reply_subject"}}
+
+      iex> {:ok, _response} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, _response} = Jetstream.API.Consumer.create(:gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
+      iex> {:ok, _sid} = Gnat.sub(:gnat, self(), "reply_subject")
+      iex> :ok = Jetstream.API.Consumer.request_next_message(:gnat, "stream", "consumer", "reply_subject", batch: 5)
+      iex> for _ <- 1..5, do: :ok = Gnat.pub(:gnat, "subject", "message")
+      iex> for _ <- 1..5, do: assert_receive {:msg, %{body: "message", topic: "subject"}}
   """
   @spec request_next_message(
           conn :: Gnat.t(),
