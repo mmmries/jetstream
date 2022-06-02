@@ -351,13 +351,6 @@ defmodule Jetstream.API.Consumer do
       iex> {:ok, _sid} = Gnat.sub(:gnat, self(), "reply_subject")
       iex> :ok = Jetstream.API.Consumer.request_next_message(:gnat, "stream", "consumer", "reply_subject", no_wait: true)
       iex> assert_receive {:msg, %{body: "", topic: "reply_subject"}}
-
-      iex> {:ok, _response} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
-      iex> {:ok, _response} = Jetstream.API.Consumer.create(:gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
-      iex> {:ok, _sid} = Gnat.sub(:gnat, self(), "reply_subject")
-      iex> :ok = Jetstream.API.Consumer.request_next_message(:gnat, "stream", "consumer", "reply_subject", batch: 5)
-      iex> for _ <- 1..5, do: :ok = Gnat.pub(:gnat, "subject", "message")
-      iex> for _ <- 1..5, do: assert_receive {:msg, %{body: "message", topic: "subject"}}
   """
   @spec request_next_message(
           conn :: Gnat.t(),
