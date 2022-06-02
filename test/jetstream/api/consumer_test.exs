@@ -247,23 +247,6 @@ defmodule Jetstream.API.ConsumerTest do
       refute_receive {:msg, %{body: "message 11"}}
     end
 
-    test "expires on server if expire option is set", %{
-      stream_name: stream_name,
-      subject: subject,
-      consumer_name: consumer_name,
-      reply_subject: reply_subject
-    } do
-      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject,
-        expires: 1_000_000
-      )
-
-      assert_receive {:msg, %{body: "", topic: ^reply_subject}}
-
-      Gnat.pub(:gnat, subject, "message 1")
-
-      refute_receive {:msg, %{body: "message 1"}}
-    end
-
     test "doesn't wait for messages when `no_wait` option is set to true", %{
       stream_name: stream_name,
       subject: subject,
