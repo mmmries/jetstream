@@ -19,11 +19,11 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     ## Options
 
-    * `ack` - acknowledges a message was completely handled.
+    * `ack` - Acknowledges a message was completely handled.
 
-    * `nack` - signals that the message will not be processed now and will be redelivered.
+    * `nack` - Signals that the message will not be processed now and will be redelivered.
 
-    * `term` - tells the server to stop redelivery of a message without acknowledging it.
+    * `term` - Tells the server to stop redelivery of a message without acknowledging it.
     """
     @type ack_option :: :ack | :nack | :term
 
