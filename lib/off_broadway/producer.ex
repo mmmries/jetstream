@@ -17,9 +17,15 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     * `consumer_name` - The name of consumer.
 
-    Optional option:
+    Optional options:
 
-    * `inbox_prefix` - custom prefix for listening topic.
+    * `connection_retry_timeout` - time in milliseconds after which the failing
+      connection will retry. Defaults to `1000`.
+
+    * `connection_retries` - number of failing connection retries the producer will
+      make before shutting down. Defaults to `10`.
+
+    * `inbox_prefix` - custom prefix for listening topic. Defaults to `_INBOX.`.
 
     ### Message pulling options
 
@@ -121,6 +127,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     alias Broadway.Message
     alias Broadway.Producer
     alias OffBroadway.Jetstream.Acknowledger
+    alias Jetstream.PullConsumer.ConnectionOptions
 
     @behaviour Producer
 
@@ -142,14 +149,21 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       receive_interval = opts[:receive_interval] || @default_receive_interval
       receive_timeout = opts[:receive_timeout] || @default_receive_timeout
 
-      connection_name = opts[:connection_name]
+      connection_options =
+        opts
+        |> Keyword.take([
+          :connection_name,
+          :stream_name,
+          :consumer_name,
+          :connection_retry_timeout,
+          :connection_retries,
+          :inbox_prefix
+        ])
+        |> ConnectionOptions.validate!()
 
-      stream_name = opts[:stream_name]
-      consumer_name = opts[:consumer_name]
-
-      inbox_prefix = opts[:inbox_prefix] || "_INBOX."
-
-      listening_topic = new_listening_topic(inbox_prefix)
+      listening_topic =
+        connection_options.inbox_prefix
+        |> new_listening_topic()
 
       case Acknowledger.init(opts) do
         {:ok, ack_ref} ->
@@ -161,11 +175,10 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
              receive_timer: nil,
              receive_interval: receive_interval,
              receive_timeout: receive_timeout,
-             connection_name: connection_name,
+             connection_options: connection_options,
              connection_pid: nil,
+             connection_retries_left: nil,
              status: :disconnected,
-             stream_name: stream_name,
-             consumer_name: consumer_name,
              listening_topic: listening_topic,
              ack_ref: ack_ref
            }}
@@ -191,19 +204,38 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     @impl true
     def handle_info(
           :connect,
-          %{connection_name: connection_name, listening_topic: listening_topic} = state
+          %{
+            connection_options: %ConnectionOptions{
+              connection_name: connection_name,
+              connection_retries: retries,
+              connection_retry_timeout: retry_timeout
+            },
+            listening_topic: listening_topic,
+            connection_retries_left: retries_left
+          } = state
         ) do
       case Process.whereis(connection_name) do
+        nil when retries_left > 0 ->
+          retries_left = if retries_left, do: retries_left - 1, else: retries
+
+          Process.send_after(self(), :connect, retry_timeout)
+          {:noreply, [], %{state | connection_retries_left: retries_left}}
+
         nil ->
-          Process.send_after(self(), :connect, 2_000)
-          {:noreply, [], state}
+          {:stop, {:shutdown, :connection_failed}, state}
 
         connection_pid ->
           Process.monitor(connection_pid)
 
           {:ok, _sid} = Gnat.sub(connection_name, self(), listening_topic)
 
-          {:noreply, [], %{state | status: :connected, connection_pid: connection_pid}}
+          {:noreply, [],
+           %{
+             state
+             | status: :connected,
+               connection_pid: connection_pid,
+               connection_retries_left: nil
+           }}
       end
     end
 
@@ -221,9 +253,12 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     def handle_info(
           {:DOWN, _ref, :process, connection_pid, _reason},
-          %{connection_pid: connection_pid} = state
+          %{
+            connection_pid: connection_pid,
+            connection_options: %ConnectionOptions{connection_retry_timeout: retry_timeout}
+          } = state
         ) do
-      Process.send_after(self(), :connect, 2_000)
+      Process.send_after(self(), :connect, retry_timeout)
       {:noreply, [], %{state | status: :disconnected, connection_pid: nil}}
     end
 
@@ -264,9 +299,9 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     defp request_messages_from_jetstream(total_demand, state) do
       Jetstream.API.Consumer.request_next_message(
-        state.connection_name,
-        state.stream_name,
-        state.consumer_name,
+        state.connection_options.connection_name,
+        state.connection_options.stream_name,
+        state.connection_options.consumer_name,
         state.listening_topic,
         batch: total_demand,
         no_wait: true

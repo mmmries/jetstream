@@ -102,7 +102,6 @@ defmodule OffBroadway.Jetstream.ProducerTest do
              connection_name: :gnat,
              consumer_name: consumer_name,
              stream_name: stream_name,
-             inbox_prefix: "_INBOX.",
              test_pid: self()
            ]
          },
