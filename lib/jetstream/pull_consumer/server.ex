@@ -309,11 +309,11 @@ defmodule Jetstream.PullConsumer.Server do
   end
 
   defp next_message(conn, stream_name, consumer_name, listening_topic) do
-    Gnat.pub(
+    Jetstream.API.Consumer.request_next_message(
       conn,
-      "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
-      "1",
-      reply_to: listening_topic
+      stream_name,
+      consumer_name,
+      listening_topic
     )
   end
 end

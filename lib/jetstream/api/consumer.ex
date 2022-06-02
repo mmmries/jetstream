@@ -320,28 +320,57 @@ defmodule Jetstream.API.Consumer do
   end
 
   @doc """
-  Requests a next message from a stream to be consumed.
+  Requests a next message from a stream to be consumed. The response will be sent on the subject
+  given as the `reply_to` parameter.
+
+  ## Options
+
+  * `batch` - How many messages to receive. They are going to be sent on the `reply_to` subject
+    separately. Defaults to 1.
+
+  * `expires` - Time in nanoseconds the request will be kept in the server. Useful when you poll
+    the server frequently and do not want the pull requests to accumulate. By default the pull
+    request stays in the server until a message comes.
+
+  * `no_wait` - Boolean value which indicates whether the pull request should be accumulated on
+    the server. When set to true and no message is present to be consumed, an error message is
+    sent. Defaults to false.
   """
-  @spec next_message(
+  @spec request_next_message(
           conn :: Gnat.t(),
           stream_name :: binary(),
           consumer_name :: binary(),
           reply_to :: String.t(),
-          batch :: non_neg_integer(),
-          no_wait :: boolean()
+          opts :: keyword()
         ) :: :ok
-  def next_message(
+  def request_next_message(
         conn,
         stream_name,
         consumer_name,
         reply_to,
-        batch \\ 1,
-        no_wait \\ false
+        opts \\ []
       ) do
+    default_payload = %{batch: 1}
+
+    put_option_if_not_nil = fn payload, option_key ->
+      if option_value = opts[option_key] do
+        Map.put(payload, option_key, option_value)
+      else
+        payload
+      end
+    end
+
+    payload =
+      default_payload
+      |> put_option_if_not_nil.(:batch)
+      |> put_option_if_not_nil.(:no_wait)
+      |> put_option_if_not_nil.(:expires)
+      |> Jason.encode!()
+
     Gnat.pub(
       conn,
       "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
-      %{batch: batch, no_wait: no_wait} |> Jason.encode!(),
+      payload,
       reply_to: reply_to
     )
   end

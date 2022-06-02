@@ -174,13 +174,13 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     end
 
     defp request_messages_from_jetstream(total_demand, state) do
-      Jetstream.API.Consumer.next_message(
+      Jetstream.API.Consumer.request_next_message(
         state.connection_name,
         state.stream_name,
         state.consumer_name,
         state.listening_topic,
-        total_demand,
-        true
+        batch: total_demand,
+        no_wait: true
       )
     end
 
