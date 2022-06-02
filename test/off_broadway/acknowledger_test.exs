@@ -29,13 +29,13 @@ defmodule OffBroadway.Jetstream.AcknowledgerTest do
   end
 
   describe "configure/3" do
-    test "raise on unsupported configure option" do
+    test "raises on unsupported configure option" do
       assert_raise(ArgumentError, "unsupported option :on_other", fn ->
         Acknowledger.configure(:ack_ref, %{}, on_other: :ack)
       end)
     end
 
-    test "raise on unsupported on_success value" do
+    test "raises on unsupported on_success value" do
       error_msg = ":unknown is not a valid :on_success option"
 
       assert_raise(ArgumentError, error_msg, fn ->
@@ -43,7 +43,7 @@ defmodule OffBroadway.Jetstream.AcknowledgerTest do
       end)
     end
 
-    test "raise on unsupported on_failure value" do
+    test "raises on unsupported on_failure value" do
       error_msg = ":unknown is not a valid :on_failure option"
 
       assert_raise(ArgumentError, error_msg, fn ->
@@ -51,19 +51,11 @@ defmodule OffBroadway.Jetstream.AcknowledgerTest do
       end)
     end
 
-    test "set on_success correctly" do
+    test "sets on_success correctly" do
       ack_data = %{reply_to: "sample_topic"}
       expected = %{reply_to: "sample_topic", on_success: :term}
 
       assert {:ok, expected} == Acknowledger.configure(:ack_ref, ack_data, on_success: :term)
-    end
-
-    test "set on_success with ignore" do
-      ack_data = %{reply_to: "sample_topic"}
-      expected = %{reply_to: "sample_topic", on_success: :term}
-
-      assert {:ok, expected} ==
-               Acknowledger.configure(:ack_ref, ack_data, on_success: :term)
     end
   end
 
@@ -96,7 +88,7 @@ defmodule OffBroadway.Jetstream.AcknowledgerTest do
       %{ack_ref: ack_ref, ack_topic: ack_topic}
     end
 
-    test "successful messages are acknowledged with default settings", %{
+    test "acknowledges successful messages with default settings", %{
       ack_ref: ack_ref,
       ack_topic: ack_topic
     } do
