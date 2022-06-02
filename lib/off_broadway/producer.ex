@@ -126,8 +126,9 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     alias Broadway.Message
     alias Broadway.Producer
-    alias OffBroadway.Jetstream.Acknowledger
     alias Jetstream.PullConsumer.ConnectionOptions
+    alias Jetstream.PullConsumer.Util
+    alias OffBroadway.Jetstream.Acknowledger
 
     @behaviour Producer
 
@@ -161,9 +162,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
         ])
         |> ConnectionOptions.validate!()
 
-      listening_topic =
-        connection_options.inbox_prefix
-        |> new_listening_topic()
+      listening_topic = Util.new_listening_topic(connection_options)
 
       case Acknowledger.init(opts) do
         {:ok, ack_ref} ->
@@ -186,14 +185,6 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
         {:error, message} ->
           raise ArgumentError, message
       end
-    end
-
-    defp new_listening_topic(inbox_prefix) do
-      inbox_prefix <> nuid()
-    end
-
-    defp nuid do
-      :crypto.strong_rand_bytes(12) |> Base.encode64()
     end
 
     @impl true
