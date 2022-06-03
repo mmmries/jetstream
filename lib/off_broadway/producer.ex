@@ -283,7 +283,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       Logger.debug(
         """
         #{__MODULE__} for #{conn_options.stream_name}.#{conn_options.consumer_name} \
-        NATS connec,tion has died. Producer is reconnecting.
+        NATS connection has died. Producer is reconnecting.
         """,
         listening_topic: state.listening_topic,
         subscription_id: state.subscription_id,
