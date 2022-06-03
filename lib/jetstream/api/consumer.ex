@@ -320,8 +320,8 @@ defmodule Jetstream.API.Consumer do
   end
 
   @doc """
-  Requests a next message from a stream to be consumed. The response will be sent on the subject
-  given as the `reply_to` parameter.
+  Requests a next message from a stream to be consumed. The response (consumed message)will be sent
+  on the subject given as the `reply_to` parameter.
 
   ## Options
 
@@ -330,14 +330,14 @@ defmodule Jetstream.API.Consumer do
 
   * `expires` - Time in nanoseconds the request will be kept in the server. Once this time passes
     a message with empty body and topic set to `reply_to` subject is sent. Useful when polling
-    the server frequently and not wanting the pull requests to accumulate. By default the pull
+    the server frequently and not wanting the pull requests to accumulate. By default, the pull
     request stays in the server until a message comes.
 
   * `no_wait` - Boolean value which indicates whether the pull request should be accumulated on
     the server. When set to true and no message is present to be consumed, a message with empty
     body and topic value set to `reply_to` is sent. Defaults to false.
 
-  ## Examples
+  ## Example
 
       iex> {:ok, _response} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
       iex> {:ok, _response} = Jetstream.API.Consumer.create(:gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
@@ -351,7 +351,9 @@ defmodule Jetstream.API.Consumer do
           stream_name :: binary(),
           consumer_name :: binary(),
           reply_to :: String.t(),
-          opts :: keyword()
+          opts :: [
+            {:batch, pos_integer()} | {:expires, non_neg_integer()} | {:no_wait, boolean()}
+          ]
         ) :: :ok
   def request_next_message(
         conn,

@@ -86,26 +86,34 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     def ack(ack_ref, successful, failed) do
       config = get_config(ack_ref)
 
+      # Creating maps where actions (`:ack`, `:term`, ...) are the keys and lists of reply
+      # subjects are the values (the default `on_success` and `on_failure` action can be
+      # modified for individual messages).
       success_actions = group_reply_topics_by_actions(successful, :on_success, config)
       failure_actions = group_reply_topics_by_actions(failed, :on_failure, config)
 
+      # Merge the maps of actions and acknowledge messages. At this point we don't care which
+      # messages have succeeded and which have failed, we only care about the action (`:ack`,
+      # `:term`, ...) which can be same for a succeeded and a failed message.
       success_actions
-      |> Map.merge(failure_actions, fn _, a, b -> a ++ b end)
+      |> Map.merge(failure_actions, fn _, success_reply_subjects, failure_reply_subjects ->
+        success_reply_subjects ++ failure_reply_subjects
+      end)
       |> ack_messages(config)
 
       :ok
     end
 
     defp group_reply_topics_by_actions(messages, key, config) do
-      Enum.group_by(messages, &group_acknowledger(&1, key, config), &extract_reply_to/1)
+      Enum.group_by(messages, &message_action(&1, key, config), &extract_reply_to/1)
     end
 
-    defp group_acknowledger(%{acknowledger: {_, _, ack_data}}, key, config) do
-      Map.get_lazy(ack_data, key, fn -> config_action(key, config) end)
+    defp message_action(%{acknowledger: {_, _, ack_data}}, key, config) do
+      Map.get_lazy(ack_data, key, fn -> default_action_from_config(key, config) end)
     end
 
-    defp config_action(:on_success, %{on_success: action}), do: action
-    defp config_action(:on_failure, %{on_failure: action}), do: action
+    defp default_action_from_config(:on_success, %{on_success: action}), do: action
+    defp default_action_from_config(:on_failure, %{on_failure: action}), do: action
 
     defp extract_reply_to(message) do
       {_, _, %{reply_to: reply_to}} = message.acknowledger
