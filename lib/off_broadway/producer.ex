@@ -53,11 +53,11 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     The supported options are:
 
-    * `ack` - Acknowledges a message was completely handled.
+    * `:ack` - Acknowledges a message was completely handled.
 
-    * `nack` - Signals that the message will not be processed now and will be redelivered.
+    * `:nack` - Signals that the message will not be processed now and will be redelivered.
 
-    * `term` - Tells the server to stop redelivery of a message without acknowledging it.
+    * `:term` - Tells the server to stop redelivery of a message without acknowledging it.
 
     ## Example
 
@@ -75,7 +75,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
               OffBroadway.Jetstream.Producer,
               connection_name: :gnat,
               stream_name: "TEST_STREAM",
-              consumer_name: "TEST_CONSUMER
+              consumer_name: "TEST_CONSUMER"
             },
             concurrency: 10
           ],
