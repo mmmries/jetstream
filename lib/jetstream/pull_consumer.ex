@@ -172,6 +172,8 @@ defmodule Jetstream.PullConsumer do
     the reply subject.
   * `:nack` - signals that the message will not be processed now and processing can move onto
     the next message, NAK'd message will be retried.
+  * `:term` - instructs the server to stop redelivery of a message without acknowledging it as
+    successfully processed.
   * `:noreply` - nothing is sent. You may send later asynchronously an ACK or NACK message using
     the `Jetstream.ack/1` or `Jetstream.nack/1` and similar functions from `Jetstream` module.
 
@@ -185,7 +187,7 @@ defmodule Jetstream.PullConsumer do
   """
   @callback handle_message(message :: Jetstream.message(), state :: term()) ::
               {ack_action, new_state}
-            when ack_action: :ack | :nack | :noreply, new_state: term()
+            when ack_action: :ack | :nack | :term | :noreply, new_state: term()
 
   @typedoc """
   The pull consumer reference.
