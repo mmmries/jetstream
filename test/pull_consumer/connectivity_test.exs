@@ -31,6 +31,10 @@ defmodule Jetstream.PullConsumer.ConnectivityTest do
       end
     end
 
+    def handle_message(%{topic: "terminatable"}, state) do
+      {:term, state}
+    end
+
     def handle_message(%{topic: "skippable"}, state) do
       {:noreply, state}
     end
@@ -41,7 +45,7 @@ defmodule Jetstream.PullConsumer.ConnectivityTest do
 
     setup do
       stream_name = "TEST_STREAM"
-      stream_subjects = ["ackable", "non-ackable", "skippable"]
+      stream_subjects = ["ackable", "non-ackable", "terminatable", "skippable"]
       consumer_name = "TEST_CONSUMER"
 
       stream = %Stream{name: stream_name, subjects: stream_subjects}
@@ -97,6 +101,11 @@ defmodule Jetstream.PullConsumer.ConnectivityTest do
       :ok = Gnat.pub(:gnat, "ackable", "hello")
 
       assert_receive {:msg, %{body: "+NXT", topic: topic}}
+      assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
+
+      :ok = Gnat.pub(:gnat, "terminatable", "hello")
+
+      assert_receive {:msg, %{body: "+TERM", topic: topic}}
       assert String.starts_with?(topic, "$JS.ACK.#{stream_name}.#{consumer_name}.1")
     end
 

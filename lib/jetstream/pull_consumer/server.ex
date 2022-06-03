@@ -217,6 +217,19 @@ defmodule Jetstream.PullConsumer.Server do
         gen_state = %{gen_state | state: state}
         {:noreply, gen_state}
 
+      {:term, state} ->
+        Jetstream.ack_term(message)
+
+        next_message(
+          message.gnat,
+          stream_name,
+          consumer_name,
+          listening_topic
+        )
+
+        gen_state = %{gen_state | state: state}
+        {:noreply, gen_state}
+
       {:noreply, state} ->
         next_message(
           message.gnat,
