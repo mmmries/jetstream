@@ -122,6 +122,8 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     ```
     """
 
+    require Logger
+
     use GenStage
 
     alias Broadway.Message
@@ -196,23 +198,51 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     def handle_info(
           :connect,
           %{
-            connection_options: %ConnectionOptions{
-              connection_name: connection_name,
-              connection_retries: retries,
-              connection_retry_timeout: retry_timeout
-            },
+            connection_options:
+              %ConnectionOptions{
+                connection_name: connection_name,
+                connection_retries: retries,
+                connection_retry_timeout: retry_timeout
+              } = conn_options,
             listening_topic: listening_topic,
             connection_retries_left: retries_left
           } = state
         ) do
+      Logger.debug(
+        """
+        #{__MODULE__} for #{conn_options.stream_name}.#{conn_options.consumer_name} \
+        is connecting to Gnat.
+        """,
+        listening_topic: listening_topic,
+        connection_name: connection_name
+      )
+
       case Process.whereis(connection_name) do
         nil when retries_left > 0 ->
+          Logger.debug(
+            """
+            #{__MODULE__} for #{conn_options.stream_name}.#{conn_options.consumer_name} \
+            failed to connect to Gnat and will retry.
+            """,
+            listening_topic: listening_topic,
+            connection_name: connection_name
+          )
+
           retries_left = if retries_left, do: retries_left - 1, else: retries
 
           Process.send_after(self(), :connect, retry_timeout)
           {:noreply, [], %{state | connection_retries_left: retries_left}}
 
         nil ->
+          Logger.error(
+            """
+            #{__MODULE__} for #{conn_options.stream_name}.#{conn_options.consumer_name} \
+            failed to connect to NATS and retries limit has been exhausted. Stopping.
+            """,
+            listening_topic: listening_topic,
+            connection_name: connection_name
+          )
+
           {:stop, {:shutdown, :connection_failed}, state}
 
         connection_pid ->
@@ -249,11 +279,31 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
             connection_options: %ConnectionOptions{connection_retry_timeout: retry_timeout}
           } = state
         ) do
+      Logger.debug(
+        """
+        #{__MODULE__} for #{conn_options.stream_name}.#{conn_options.consumer_name} \
+        NATS connec,tion has died. Producer is reconnecting.
+        """,
+        listening_topic: state.listening_topic,
+        subscription_id: state.subscription_id,
+        connection_name: state.connection_options.connection_name
+      )
+
       Process.send_after(self(), :connect, retry_timeout)
       {:noreply, [], %{state | status: :disconnected, connection_pid: nil}}
     end
 
-    def handle_info(_, state) do
+    def handle_info(unexpected_message, state) do
+      Logger.debug(
+        """
+        #{__MODULE__} for #{conn_options.stream_name}.#{conn_options.consumer_name} \
+        received unexpected message: #{inspect(unexpected_message, pretty: true)}
+        """,
+        listening_topic: state.listening_topic,
+        subscription_id: state.subscription_id,
+        connection_name: state.connection_options.connection_name
+      )
+
       {:noreply, [], state}
     end
 
