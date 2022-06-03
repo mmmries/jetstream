@@ -294,10 +294,10 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       {:noreply, [], %{state | status: :disconnected, connection_pid: nil}}
     end
 
-    def handle_info(unexpected_message, state) do
+    def handle_info(unexpected_message, %{connection_options: conn_options} = state) do
       Logger.debug(
         """
-        #{__MODULE__} for #{state.connection_options.stream_name}.#{state.connection_options.consumer_name} \
+        #{__MODULE__} for #{conn_options.stream_name}.#{conn_options.consumer_name} \
         received unexpected message: #{inspect(unexpected_message, pretty: true)}
         """,
         listening_topic: state.listening_topic,
