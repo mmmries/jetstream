@@ -351,9 +351,7 @@ defmodule Jetstream.API.Consumer do
           stream_name :: binary(),
           consumer_name :: binary(),
           reply_to :: String.t(),
-          opts :: [
-            {:batch, pos_integer()} | {:expires, non_neg_integer()} | {:no_wait, boolean()}
-          ]
+          opts :: keyword()
         ) :: :ok
   def request_next_message(
         conn,

@@ -19,7 +19,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     Optional options:
 
-    * `connection_retry_timeout` - time in milliseconds after which the failing
+    * `connection_retry_timeout` - time in milliseconds, after which the failing
       connection will retry. Defaults to `1000`.
 
     * `connection_retries` - number of failing connection retries the producer will
@@ -45,7 +45,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     ## Acknowledgements
 
-    By default successful messages are acknowledged and failed ones are nack'ed. You can
+    By default, successful messages are acknowledged, and failed ones are nack'ed. You can
     change this behaviour by setting the `:on_success` or/and `:on_failure` options.
 
     You can also change the acknowledgement action for individual messages using the
