@@ -22,7 +22,7 @@ section in [Getting Started guide](../introduction/getting_started.md).
 ### Adding Broadway to your application
 
 Once we have NATS with JetStream running and the stream and consumer we are going to use are
-created, we can proceed to adding Broadway to our project. First, put `:broadway` to the list of 
+created, we can proceed to adding Broadway to our project. First, put `:broadway` to the list of
 dependencies in `mix.exs`.
 
 ```elixir
