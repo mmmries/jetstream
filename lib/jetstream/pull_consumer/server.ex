@@ -5,6 +5,7 @@ defmodule Jetstream.PullConsumer.Server do
 
   use Connection
 
+  alias Jetstream.Util
   alias Jetstream.PullConsumer.ConnectionOptions
 
   defstruct [
@@ -43,11 +44,7 @@ defmodule Jetstream.PullConsumer.Server do
   end
 
   defp new_listening_topic(%ConnectionOptions{} = o) do
-    o.inbox_prefix <> nuid()
-  end
-
-  defp nuid() do
-    :crypto.strong_rand_bytes(12) |> Base.encode64()
+    o.inbox_prefix <> Util.nuid()
   end
 
   def connect(
