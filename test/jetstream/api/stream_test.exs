@@ -176,7 +176,7 @@ defmodule Jetstream.API.StreamTest do
                  last_by_subj: "PURGE_TEST.foo"
                })
 
-      assert description in ["no message found", "streamstore EOF"]
+      assert description in ["no message found", "stream store EOF"]
 
       assert :ok = Stream.delete(:gnat, "PURGE_TEST")
     end
