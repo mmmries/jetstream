@@ -65,4 +65,13 @@ defmodule Jetstream.API.KVTest do
     assert "baz" = KV.get_value(:gnat, "KEY_PUT_TEST", "foo")
     assert :ok = KV.delete_bucket(:gnat, "KEY_PUT_TEST")
   end
+
+  test "bucket_status/2 gets the status of a bucket" do
+    assert {:ok, _} = KV.create_bucket(:gnat, "BUCKET_STATUS_TEST")
+
+    assert {:ok, %{config: %{name: "KV_BUCKET_STATUS_TEST"}}} =
+             KV.bucket_status(:gnat, "BUCKET_STATUS_TEST")
+
+    assert :ok = KV.delete_bucket(:gnat, "BUCKET_STATUS_TEST")
+  end
 end

@@ -83,6 +83,20 @@ defmodule Jetstream.API.KV do
   end
 
   @doc """
+  Get the status of a bucket
+
+  ## Examples
+
+      iex>Jetstream.API.KV.bucket_status(:gnat, "my_bucket")
+      {:ok, %{}}
+  """
+  @spec bucket_status(conn :: Gnat.t(), bucket_name :: binary()) ::
+          {:ok, Stream.info()} | {:error, any()}
+  def bucket_status(conn, bucket_name) do
+    Stream.info(conn, stream_name(bucket_name))
+  end
+
+  @doc """
   Create a Key in a Key/Value Bucket
 
   ## Examples
@@ -90,9 +104,12 @@ defmodule Jetstream.API.KV do
       iex>:ok = Jetstream.API.KV.create_key(:gnat, "my_bucket", "my_key", "my_value")
   """
   @spec create_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary(), value :: binary()) ::
-          :ok
+          :ok | {:error, any()}
   def create_key(conn, bucket_name, key, value) do
-    Gnat.pub(conn, key_name(bucket_name, key), value)
+    case Stream.info(conn, stream_name(bucket_name)) do
+      {:ok, _info} -> Gnat.pub(conn, key_name(bucket_name, key), value)
+      error -> error
+    end
   end
 
   @doc """
