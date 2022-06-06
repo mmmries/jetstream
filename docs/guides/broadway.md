@@ -15,7 +15,7 @@ In order to use Broadway with NATS Jetstream you need to:
 3. Configure Gnat connection in your Elixir project
 4. Configure your project to use Broadway
 
-In this guide we are going to focus on the fourth point. To learn how to start Jetstream locally
+In this guide, we are going to focus on the fourth point. To learn how to start Jetstream locally
 with Docker Compose and then add Gnat and Jetstream to your application, see the Starting Jetstream
 section in [Getting Started guide](../introduction/getting_started.md).
 
@@ -134,7 +134,7 @@ defmodule MyBroadway do
 ```
 
 First, in `handle_message/3` we update our messages' data individually by converting them to
-uppercase. Then, in the same callback we're changing the success ack option of the message
+uppercase. Then, in the same callback, we're changing the success ack option of the message
 to `:term` if its content is `"FOO"` or to `:nack` if the message is `"BAR"`. In the end we
 print each batch in `handle_batch/4`. It's not quite useful but should be enough for this
 guide.

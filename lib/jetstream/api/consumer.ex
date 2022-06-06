@@ -325,7 +325,7 @@ defmodule Jetstream.API.Consumer do
 
   ## Options
 
-  * `batch` - How many messages to receive. They are going to be sent on the `reply_to` subject
+  * `batch` - How many messages to receive. Messages will be sent to the `reply_to` subject
     separately. Defaults to 1.
 
   * `expires` - Time in nanoseconds the request will be kept in the server. Once this time passes
