@@ -66,7 +66,8 @@ defmodule Jetstream.MixProject do
         "docs/introduction/overview.md",
         "docs/introduction/getting_started.md",
         "docs/guides/managing.md",
-        "docs/guides/push_based_consumer.md"
+        "docs/guides/push_based_consumer.md",
+        "docs/guides/broadway.md"
       ],
       groups_for_extras: [
         Introduction: ~r/docs\/introduction\/[^\/]+\.md/,
