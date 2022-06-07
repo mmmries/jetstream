@@ -87,6 +87,7 @@ defmodule Jetstream.API.StreamTest do
       assert response.state.subjects["INFO_TEST_FILTER.foo"] == 1
     end
   end
+
   test "creating a stream with non-standard settings" do
     stream = %Stream{
       name: "ARGS_TEST",
@@ -194,6 +195,90 @@ defmodule Jetstream.API.StreamTest do
       assert description in ["no message found", "stream store EOF"]
 
       assert :ok = Stream.delete(:gnat, "PURGE_TEST")
+    end
+  end
+
+  describe "get_all_messages/2" do
+    setup do
+      on_exit(fn ->
+        nil
+      end)
+
+      :ok
+    end
+
+    test "gets multiple messages" do
+      stream = %Stream{
+        name: "GET_MULTIPLE_MESSAGES",
+        subjects: ["GET_MULTIPLE_MESSAGES.*"]
+      }
+
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+
+      assert :ok = Gnat.pub(:gnat, "GET_MULTIPLE_MESSAGES.bar", "bar message")
+      assert :ok = Gnat.pub(:gnat, "GET_MULTIPLE_MESSAGES.foo", "foo message")
+
+      assert {:ok, ["bar message", "foo message"]} ==
+               Stream.get_all_messages(:gnat, "GET_MULTIPLE_MESSAGES")
+
+      Stream.delete(:gnat, "GET_MULTIPLE_MESSAGES")
+    end
+
+    test "when no messages" do
+      stream = %Stream{
+        name: "GET_MULTIPLE_MESSAGES",
+        subjects: ["GET_MULTIPLE_MESSAGES.*"]
+      }
+
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+
+      assert {:ok, []} ==
+               Stream.get_all_messages(:gnat, "GET_MULTIPLE_MESSAGES")
+
+      Stream.delete(:gnat, "GET_MULTIPLE_MESSAGES")
+    end
+
+    test "filter subject" do
+      stream = %Stream{
+        name: "GET_MULTIPLE_MESSAGES",
+        subjects: ["GET_MULTIPLE_MESSAGES.*"]
+      }
+
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+
+      assert :ok = Gnat.pub(:gnat, "GET_MULTIPLE_MESSAGES.bar", "bar message")
+      assert :ok = Gnat.pub(:gnat, "GET_MULTIPLE_MESSAGES.foo", "foo message")
+
+      assert {:ok, ["foo message"]} ==
+               Stream.get_all_messages(:gnat, "GET_MULTIPLE_MESSAGES",
+                 filter_subject: "GET_MULTIPLE_MESSAGES.foo"
+               )
+
+      Stream.delete(:gnat, "GET_MULTIPLE_MESSAGES")
+    end
+
+    test "filter subject that doesn't match anything" do
+      stream = %Stream{
+        name: "GET_MULTIPLE_MESSAGES",
+        subjects: ["GET_MULTIPLE_MESSAGES.*"]
+      }
+
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+
+      assert :ok = Gnat.pub(:gnat, "GET_MULTIPLE_MESSAGES.bar", "bar message")
+      assert :ok = Gnat.pub(:gnat, "GET_MULTIPLE_MESSAGES.foo", "foo message")
+
+      assert {:ok, []} ==
+               Stream.get_all_messages(:gnat, "GET_MULTIPLE_MESSAGES",
+                 filter_subject: "GET_MULTIPLE_MESSAGES.baz"
+               )
+
+      Stream.delete(:gnat, "GET_MULTIPLE_MESSAGES")
+    end
+
+    test "error if no stream" do
+      assert {:error, %{"code" => 404, "description" => "stream not found", "err_code" => 10059}} ==
+               Stream.get_all_messages(:gnat, "GET_MULTIPLE_MESSAGES")
     end
   end
 end

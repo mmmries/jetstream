@@ -401,6 +401,58 @@ defmodule Jetstream.API.Stream do
     end
   end
 
+  @spec get_all_messages(conn :: Gnat.t(), stream_name :: binary()) ::
+          {:ok, [binary()]} | {:error, term()}
+  def get_all_messages(conn, stream_name, opts \\ []) do
+    deliver_subject = "#{ConnectionOptions.default_inbox_prefix()}#{nuid()}"
+    filter_subject = Keyword.get(opts, :filter_subject)
+    {:ok, subscription} = Gnat.sub(conn, self(), deliver_subject)
+
+    consumer = %Jetstream.API.Consumer{
+      stream_name: stream_name,
+      ack_policy: :none,
+      max_ack_pending: -1,
+      max_deliver: 1,
+      deliver_policy: :all,
+      deliver_subject: deliver_subject,
+      filter_subject: filter_subject,
+      replay_policy: :instant,
+      flow_control: true,
+      idle_heartbeat: 5_000_000_000,
+      ack_wait: 79_200_000_000_000
+    }
+
+    with {:ok, info} <- info(conn, stream_name, subjects_filter: filter_subject),
+         {:ok, %{name: name}} <- Consumer.create(conn, consumer) do
+      messages = collect_messages([], num_messages(info, filter_subject))
+
+      Gnat.unsub(conn, subscription)
+      Consumer.delete(conn, stream_name, name)
+
+      {:ok, messages}
+    end
+  end
+
+  # We need to know the total number of messages for the stream or subject so
+  # that our `receive` block doesn't wait forever
+  defp num_messages(info, nil), do: info.state.messages
+
+  defp num_messages(info, filter_subject) do
+    get_in(info.state, [:subjects, filter_subject]) || 0
+  end
+
+  defp collect_messages(messages, max) when max == length(messages), do: messages
+
+  defp collect_messages(messages, max) do
+    receive do
+      {:msg, %{body: body}} ->
+        collect_messages(Enum.concat(messages, [body]), max)
+    after
+      5000 ->
+        IO.puts(:stderr, "No message in 5 seconds")
+        messages
+    end
+  end
   defp to_state(state) do
     %{
       bytes: Map.fetch!(state, "bytes"),
