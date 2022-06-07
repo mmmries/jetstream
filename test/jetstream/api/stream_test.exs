@@ -283,7 +283,7 @@ defmodule Jetstream.API.StreamTest do
     end
 
     test "error if no stream" do
-      assert {:error, %{"code" => 404, "description" => "stream not found"}} ==
+      assert {:error, %{"code" => 404, "description" => "stream not found"}} =
                Stream.get_all_messages(:gnat, "GET_MULTIPLE_MESSAGES")
     end
   end
