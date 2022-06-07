@@ -62,4 +62,10 @@ defmodule Jetstream.ConnCase do
     |> Supervisor.child_spec(start: {Gnat, :start_link, [connection_settings, options]})
     |> start_supervised!()
   end
+
+  defmacro min_server_version(min_version) do
+    quote do
+      @tag if unquote(server_version_incompatible?(min_version)), do: unquote(:incompatible)
+    end
+  end
 end

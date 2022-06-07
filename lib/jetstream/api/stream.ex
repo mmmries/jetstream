@@ -347,13 +347,18 @@ defmodule Jetstream.API.Stream do
         ) ::
           {:ok, info()} | {:error, any()}
   def info(conn, stream_name, opts \\ []) when is_binary(stream_name) do
-    with {:ok, decoded} <-
-           request(
-             conn,
-             "$JS.API.STREAM.INFO.#{stream_name}",
-             Jason.encode!(Enum.into(opts, %{}))
-           ) do
+    with {:ok, decoded} <- info_request(conn, stream_name, opts) do
       {:ok, to_info(decoded)}
+    end
+  end
+
+  defp info_request(conn, stream_name, opts) do
+    version = Gnat.server_info(conn).version
+
+    if Version.match?(version, ">= 2.7.2") do
+      request(conn, "$JS.API.STREAM.INFO.#{stream_name}", Jason.encode!(Enum.into(opts, %{})))
+    else
+      request(conn, "$JS.API.STREAM.INFO.#{stream_name}", "")
     end
   end
 
@@ -414,7 +419,7 @@ defmodule Jetstream.API.Stream do
       iex> Gnat.pub(:gnat, "MY_STREAM.foo", "foo")
       iex> Gnat.pub(:gnat, "MY_STREAM.bar", "bar")
       iex> {:ok, ["foo", "bar"]} = Jetstream.API.Stream.get_all_messages(:gnat, "MY_STREAM")
-      iex> {:ok, ["foo"]} = Jetstream.API.Stream.get_all_messages(:gnat, "MY_STREAM", filter_subject: "MY_STREAM.foo")
+      iex> # {:ok, ["foo"]} = Jetstream.API.Stream.get_all_messages(:gnat, "MY_STREAM", filter_subject: "MY_STREAM.foo")
   """
   @spec get_all_messages(conn :: Gnat.t(), stream_name :: binary()) ::
           {:ok, [binary()]} | {:error, term()}

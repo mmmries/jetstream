@@ -73,6 +73,8 @@ defmodule Jetstream.API.StreamTest do
              }
     end
 
+    min_server_version("2.7.2")
+
     test "getting stream info with subjects_filter" do
       stream = %Stream{name: "INFO_TEST_FILTER", subjects: ["INFO_TEST_FILTER.*"]}
       assert {:ok, _response} = Stream.create(:gnat, stream)
@@ -238,6 +240,8 @@ defmodule Jetstream.API.StreamTest do
       Stream.delete(:gnat, "GET_MULTIPLE_MESSAGES")
     end
 
+    min_server_version("2.7.2")
+
     test "filter subject" do
       stream = %Stream{
         name: "GET_MULTIPLE_MESSAGES",
@@ -256,6 +260,8 @@ defmodule Jetstream.API.StreamTest do
 
       Stream.delete(:gnat, "GET_MULTIPLE_MESSAGES")
     end
+
+    min_server_version("2.7.2")
 
     test "filter subject that doesn't match anything" do
       stream = %Stream{
@@ -277,7 +283,7 @@ defmodule Jetstream.API.StreamTest do
     end
 
     test "error if no stream" do
-      assert {:error, %{"code" => 404, "description" => "stream not found", "err_code" => 10059}} ==
+      assert {:error, %{"code" => 404, "description" => "stream not found"}} ==
                Stream.get_all_messages(:gnat, "GET_MULTIPLE_MESSAGES")
     end
   end
