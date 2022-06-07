@@ -418,6 +418,12 @@ defmodule Jetstream.API.Stream do
   """
   @spec get_all_messages(conn :: Gnat.t(), stream_name :: binary()) ::
           {:ok, [binary()]} | {:error, term()}
+  @spec get_all_messages(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          opts :: [{:filter_subject, binary()}]
+        ) ::
+          {:ok, [binary()]} | {:error, term()}
   def get_all_messages(conn, stream_name, opts \\ []) do
     deliver_subject = "#{ConnectionOptions.default_inbox_prefix()}#{nuid()}"
     filter_subject = Keyword.get(opts, :filter_subject)
