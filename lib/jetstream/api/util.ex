@@ -44,4 +44,9 @@ defmodule Jetstream.API.Util do
 
   def decode_base64(nil), do: nil
   def decode_base64(data), do: Base.decode64!(data)
+
+  @doc "Generate a NATS Unique identifier"
+  def nuid() do
+    :crypto.strong_rand_bytes(12) |> Base.encode64()
+  end
 end

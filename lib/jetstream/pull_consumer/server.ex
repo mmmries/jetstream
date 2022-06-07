@@ -5,7 +5,7 @@ defmodule Jetstream.PullConsumer.Server do
 
   use Connection
 
-  alias Jetstream.Util
+  alias Jetstream.API.Util
   alias Jetstream.PullConsumer.ConnectionOptions
 
   defstruct [
