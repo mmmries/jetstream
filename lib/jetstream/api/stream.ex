@@ -58,6 +58,8 @@ defmodule Jetstream.API.Stream do
   """
 
   import Jetstream.API.Util
+  alias Jetstream.API.Consumer
+  alias Jetstream.PullConsumer.ConnectionOptions
 
   @enforce_keys [:name, :subjects]
   @derive Jason.Encoder
@@ -324,7 +326,9 @@ defmodule Jetstream.API.Stream do
   end
 
   @doc """
-  Information about config and state of a Stream.
+  Information about config and state of a Stream. Can include `:deleted_details` to get a list of
+  deleted message IDs in the response. Can include `:subjects_filter` to add a breakdown of
+  subjects and how many message in each
 
   ## Examples
 
@@ -401,6 +405,17 @@ defmodule Jetstream.API.Stream do
     end
   end
 
+  @doc """
+  A one-off request to get all the messages in the stream. You can also retrieve all the
+  messages for a subject(s) by passing in `:filter_subject`
+
+  ## Examples
+      iex> Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "MY_STREAM", subjects: ["MY_STREAM.*"]})
+      iex> Gnat.pub(:gnat, "MY_STREAM.foo", "foo")
+      iex> Gnat.pub(:gnat, "MY_STREAM.bar", "bar")
+      iex> {:ok, ["foo", "bar"]} = Jetstream.API.Stream.get_all_messages(:gnat, "MY_STREAM")
+      iex> {:ok, ["foo"]} = Jetstream.API.Stream.get_all_messages(:gnat, "MY_STREAM", filter_subject: "MY_STREAM.foo")
+  """
   @spec get_all_messages(conn :: Gnat.t(), stream_name :: binary()) ::
           {:ok, [binary()]} | {:error, term()}
   def get_all_messages(conn, stream_name, opts \\ []) do
@@ -453,6 +468,7 @@ defmodule Jetstream.API.Stream do
         messages
     end
   end
+
   defp to_state(state) do
     %{
       bytes: Map.fetch!(state, "bytes"),
