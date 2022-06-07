@@ -336,8 +336,19 @@ defmodule Jetstream.API.Stream do
   """
   @spec info(conn :: Gnat.t(), stream_name :: binary()) ::
           {:ok, info()} | {:error, any()}
-  def info(conn, stream_name) when is_binary(stream_name) do
-    with {:ok, decoded} <- request(conn, "$JS.API.STREAM.INFO.#{stream_name}", "") do
+  @spec info(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          opts :: [{:subjects_filter, binary()} | {:deleted_details, boolean()}]
+        ) ::
+          {:ok, info()} | {:error, any()}
+  def info(conn, stream_name, opts \\ []) when is_binary(stream_name) do
+    with {:ok, decoded} <-
+           request(
+             conn,
+             "$JS.API.STREAM.INFO.#{stream_name}",
+             Jason.encode!(Enum.into(opts, %{}))
+           ) do
       {:ok, to_info(decoded)}
     end
   end

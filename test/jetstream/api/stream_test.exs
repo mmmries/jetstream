@@ -49,29 +49,44 @@ defmodule Jetstream.API.StreamTest do
              Stream.delete(:gnat, "NaN")
   end
 
-  test "getting stream info" do
-    stream = %Stream{name: "INFO_TEST", subjects: ["INFO_TEST.*"]}
-    assert {:ok, _response} = Stream.create(:gnat, stream)
+  describe "info/3" do
+    test "getting stream info" do
+      stream = %Stream{name: "INFO_TEST", subjects: ["INFO_TEST.*"]}
+      assert {:ok, _response} = Stream.create(:gnat, stream)
 
-    assert {:ok, response} = Stream.info(:gnat, "INFO_TEST")
-    assert response.config == stream
+      assert {:ok, response} = Stream.info(:gnat, "INFO_TEST")
+      assert response.config == stream
 
-    assert response.state == %{
-             bytes: 0,
-             consumer_count: 0,
-             first_seq: 0,
-             first_ts: ~U[0001-01-01 00:00:00Z],
-             last_seq: 0,
-             last_ts: ~U[0001-01-01 00:00:00Z],
-             messages: 0,
-             deleted: nil,
-             lost: nil,
-             num_deleted: nil,
-             num_subjects: nil,
-             subjects: nil
-           }
+      assert response.state == %{
+               bytes: 0,
+               consumer_count: 0,
+               first_seq: 0,
+               first_ts: ~U[0001-01-01 00:00:00Z],
+               last_seq: 0,
+               last_ts: ~U[0001-01-01 00:00:00Z],
+               messages: 0,
+               deleted: nil,
+               lost: nil,
+               num_deleted: nil,
+               num_subjects: nil,
+               subjects: nil
+             }
+    end
+
+    test "getting stream info with subjects_filter" do
+      stream = %Stream{name: "INFO_TEST_FILTER", subjects: ["INFO_TEST_FILTER.*"]}
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+
+      assert :ok = Gnat.pub(:gnat, "INFO_TEST_FILTER.foo", "foo")
+      assert :ok = Gnat.pub(:gnat, "INFO_TEST_FILTER.bar", "bar")
+
+      assert {:ok, response} =
+               Stream.info(:gnat, "INFO_TEST_FILTER", subjects_filter: "INFO_TEST_FILTER.foo")
+
+      assert response.config == stream
+      assert response.state.subjects["INFO_TEST_FILTER.foo"] == 1
+    end
   end
-
   test "creating a stream with non-standard settings" do
     stream = %Stream{
       name: "ARGS_TEST",
