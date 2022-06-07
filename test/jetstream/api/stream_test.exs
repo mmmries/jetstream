@@ -162,4 +162,23 @@ defmodule Jetstream.API.StreamTest do
       assert :ok = Stream.delete(:gnat, "GET_MESSAGE_TEST_WITH_HEADERS")
     end
   end
+
+  describe "purge/2" do
+    test "clears the stream" do
+      stream = %Stream{name: "PURGE_TEST", subjects: ["PURGE_TEST.foo"]}
+      assert {:ok, _response} = Stream.create(:gnat, stream)
+      assert :ok = Gnat.pub(:gnat, "PURGE_TEST.foo", "hi there")
+
+      assert :ok = Stream.purge(:gnat, "PURGE_TEST")
+
+      assert {:error, %{"description" => description}} =
+               Stream.get_message(:gnat, "PURGE_TEST", %{
+                 last_by_subj: "PURGE_TEST.foo"
+               })
+
+      assert description in ["no message found", "stream store EOF"]
+
+      assert :ok = Stream.delete(:gnat, "PURGE_TEST")
+    end
+  end
 end

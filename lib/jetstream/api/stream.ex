@@ -305,6 +305,25 @@ defmodule Jetstream.API.Stream do
   end
 
   @doc """
+  Purges all of data in the stream but doesn't delete the stream.
+
+  ## Examples
+
+      iex> Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> Jetstream.API.Stream.purge(:gnat, "stream")
+      :ok
+
+      iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Stream.purge(:gnat, "wrong_stream")
+
+  """
+  @spec purge(conn :: Gnat.t(), stream_name :: binary()) :: :ok | {:error, any()}
+  def purge(conn, stream_name) when is_binary(stream_name) do
+    with {:ok, _response} <- request(conn, "$JS.API.STREAM.PURGE.#{stream_name}", "") do
+      :ok
+    end
+  end
+
+  @doc """
   Information about config and state of a Stream.
 
   ## Examples
