@@ -70,6 +70,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       def start_link(_opts) do
         Broadway.start_link(
           __MODULE__,
+          name: MyBroadway,
           producer: [
             module: {
               OffBroadway.Jetstream.Producer,

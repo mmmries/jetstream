@@ -59,6 +59,7 @@ defmodule MyBroadway do
   def start_link(_opts) do
     Broadway.start_link(
       __MODULE__,
+      name: MyBroadwayExample,
       producer: [
         module: {
           OffBroadway.Jetstream.Producer,
