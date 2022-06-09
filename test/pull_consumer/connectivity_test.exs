@@ -155,7 +155,9 @@ defmodule Jetstream.PullConsumer.ConnectivityTest do
 
       :ok = Gnat.pub(:gnat, "ackable", "hello")
 
-      assert_receive {:msg, %{body: "1", reply_to: "CUSTOM_PREFIX." <> _}}
+      expected_body = %{batch: 1} |> Jason.encode!()
+
+      assert_receive {:msg, %{body: ^expected_body, reply_to: "CUSTOM_PREFIX." <> _}}
     end
   end
 end

@@ -6,6 +6,7 @@ defmodule Jetstream.PullConsumer.Server do
   use Connection
 
   alias Jetstream.PullConsumer.ConnectionOptions
+  alias Jetstream.PullConsumer.Util
 
   defstruct [
     :connection_options,
@@ -28,7 +29,7 @@ defmodule Jetstream.PullConsumer.Server do
         gen_state = %__MODULE__{
           connection_options: connection_options,
           state: state,
-          listening_topic: new_listening_topic(connection_options),
+          listening_topic: Util.new_listening_topic(connection_options),
           module: module
         }
 
@@ -40,14 +41,6 @@ defmodule Jetstream.PullConsumer.Server do
       {:stop, _} = stop ->
         stop
     end
-  end
-
-  defp new_listening_topic(%ConnectionOptions{} = o) do
-    o.inbox_prefix <> nuid()
-  end
-
-  defp nuid() do
-    :crypto.strong_rand_bytes(12) |> Base.encode64()
   end
 
   def connect(
@@ -322,11 +315,11 @@ defmodule Jetstream.PullConsumer.Server do
   end
 
   defp next_message(conn, stream_name, consumer_name, listening_topic) do
-    Gnat.pub(
+    Jetstream.API.Consumer.request_next_message(
       conn,
-      "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
-      "1",
-      reply_to: listening_topic
+      stream_name,
+      consumer_name,
+      listening_topic
     )
   end
 end

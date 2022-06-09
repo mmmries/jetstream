@@ -178,4 +178,116 @@ defmodule Jetstream.API.ConsumerTest do
 
     assert reason == "durable_name must be a string"
   end
+
+  describe "request_next_message/5" do
+    setup do
+      stream_name = "REQUEST_MESSAGE_TEST_STREAM"
+      subject = "request_test_subject"
+      consumer_name = "REQUEST_MESSAGE_TEST_CONSUMER"
+
+      Stream.delete(:gnat, stream_name)
+
+      stream = %Stream{name: stream_name, subjects: [subject]}
+      {:ok, _response} = Stream.create(:gnat, stream)
+
+      consumer = %Consumer{stream_name: stream_name, durable_name: consumer_name}
+      assert {:ok, _response} = Consumer.create(:gnat, consumer)
+
+      reply_subject = "reply"
+
+      Gnat.sub(:gnat, self(), reply_subject)
+
+      %{
+        stream_name: stream_name,
+        subject: subject,
+        consumer_name: consumer_name,
+        reply_subject: reply_subject
+      }
+    end
+
+    test "requests a single message with default options", %{
+      stream_name: stream_name,
+      subject: subject,
+      consumer_name: consumer_name,
+      reply_subject: reply_subject
+    } do
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject)
+
+      Gnat.pub(:gnat, subject, "message 1")
+
+      assert_receive {:msg, %{body: "message 1", topic: ^subject}}
+
+      Gnat.pub(:gnat, subject, "message 2")
+
+      refute_receive {:msg, %{body: "message 2"}}
+    end
+
+    test "requests batch messages", %{
+      stream_name: stream_name,
+      subject: subject,
+      consumer_name: consumer_name,
+      reply_subject: reply_subject
+    } do
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject, batch: 10)
+
+      Gnat.pub(:gnat, subject, "message 1")
+
+      assert_receive {:msg, %{body: "message 1", topic: ^subject}}
+
+      for i <- 2..10, do: Gnat.pub(:gnat, subject, "message #{i}")
+
+      for i <- 2..10 do
+        expected_body = "message #{i}"
+
+        assert_receive {:msg, %{body: ^expected_body, topic: ^subject}}
+      end
+
+      Gnat.pub(:gnat, subject, "message 11")
+
+      refute_receive {:msg, %{body: "message 11"}}
+    end
+
+    test "doesn't wait for messages when `no_wait` option is set to true", %{
+      stream_name: stream_name,
+      subject: subject,
+      consumer_name: consumer_name,
+      reply_subject: reply_subject
+    } do
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject,
+        no_wait: true
+      )
+
+      assert_receive {:msg, %{body: "", topic: ^reply_subject}}
+
+      Gnat.pub(:gnat, subject, "message 1")
+
+      refute_receive {:msg, %{body: "message 1"}}
+    end
+
+    test "doesn't wait for messages to complete the batch size with `no_wait`", %{
+      stream_name: stream_name,
+      subject: subject,
+      consumer_name: consumer_name,
+      reply_subject: reply_subject
+    } do
+      for i <- 1..9, do: Gnat.pub(:gnat, subject, "message #{i}")
+
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject,
+        batch: 10,
+        no_wait: true
+      )
+
+      for i <- 1..9 do
+        expected_body = "message #{i}"
+
+        assert_receive {:msg, %{body: ^expected_body, topic: ^subject}}
+      end
+
+      assert_receive {:msg, %{body: "", topic: ^reply_subject}}
+
+      Gnat.pub(:gnat, subject, "message 10")
+
+      refute_receive {:msg, %{body: "message 10"}}
+    end
+  end
 end

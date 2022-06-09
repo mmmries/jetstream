@@ -319,6 +319,72 @@ defmodule Jetstream.API.Consumer do
     end
   end
 
+  @doc """
+  Requests a next message from a stream to be consumed. The response (consumed message)will be sent
+  on the subject given as the `reply_to` parameter.
+
+  ## Options
+
+  * `batch` - How many messages to receive. Messages will be sent to the `reply_to` subject
+    separately. Defaults to 1.
+
+  * `expires` - Time in nanoseconds the request will be kept in the server. Once this time passes
+    a message with empty body and topic set to `reply_to` subject is sent. Useful when polling
+    the server frequently and not wanting the pull requests to accumulate. By default, the pull
+    request stays in the server until a message comes.
+
+  * `no_wait` - Boolean value which indicates whether the pull request should be accumulated on
+    the server. When set to true and no message is present to be consumed, a message with empty
+    body and topic value set to `reply_to` is sent. Defaults to false.
+
+  ## Example
+
+      iex> {:ok, _response} = Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["subject"]})
+      iex> {:ok, _response} = Jetstream.API.Consumer.create(:gnat, %Jetstream.API.Consumer{durable_name: "consumer", stream_name: "stream"})
+      iex> {:ok, _sid} = Gnat.sub(:gnat, self(), "reply_subject")
+      iex> :ok = Jetstream.API.Consumer.request_next_message(:gnat, "stream", "consumer", "reply_subject")
+      iex> :ok = Gnat.pub(:gnat, "subject", "message1")
+      iex> assert_receive {:msg, %{body: "message1", topic: "subject"}}
+  """
+  @spec request_next_message(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          consumer_name :: binary(),
+          reply_to :: String.t(),
+          opts :: keyword()
+        ) :: :ok
+  def request_next_message(
+        conn,
+        stream_name,
+        consumer_name,
+        reply_to,
+        opts \\ []
+      ) do
+    default_payload = %{batch: 1}
+
+    put_option_if_not_nil = fn payload, option_key ->
+      if option_value = opts[option_key] do
+        Map.put(payload, option_key, option_value)
+      else
+        payload
+      end
+    end
+
+    payload =
+      default_payload
+      |> put_option_if_not_nil.(:batch)
+      |> put_option_if_not_nil.(:no_wait)
+      |> put_option_if_not_nil.(:expires)
+      |> Jason.encode!()
+
+    Gnat.pub(
+      conn,
+      "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
+      payload,
+      reply_to: reply_to
+    )
+  end
+
   defp create_payload(%__MODULE__{} = cons) do
     %{
       config: %{

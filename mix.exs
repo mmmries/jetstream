@@ -33,6 +33,7 @@ defmodule Jetstream.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:broadway, "~> 1.0", optional: true},
       {:connection, "~> 1.0"},
       {:gnat, "~> 1.1"},
       {:jason, "~> 1.1"},
@@ -65,7 +66,8 @@ defmodule Jetstream.MixProject do
         "docs/introduction/overview.md",
         "docs/introduction/getting_started.md",
         "docs/guides/managing.md",
-        "docs/guides/push_based_consumer.md"
+        "docs/guides/push_based_consumer.md",
+        "docs/guides/broadway.md"
       ],
       groups_for_extras: [
         Introduction: ~r/docs\/introduction\/[^\/]+\.md/,
