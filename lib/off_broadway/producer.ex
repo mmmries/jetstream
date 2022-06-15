@@ -180,6 +180,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
              connection_options: connection_options,
              connection_pid: nil,
              connection_retries_left: nil,
+             subscription_id: nil,
              status: :disconnected,
              listening_topic: listening_topic,
              ack_ref: ack_ref
@@ -249,14 +250,15 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
         connection_pid ->
           Process.monitor(connection_pid)
 
-          {:ok, _sid} = Gnat.sub(connection_name, self(), listening_topic)
+          {:ok, sid} = Gnat.sub(connection_name, self(), listening_topic)
 
           {:noreply, [],
            %{
              state
              | status: :connected,
                connection_pid: connection_pid,
-               connection_retries_left: nil
+               connection_retries_left: nil,
+               subscription_id: sid
            }}
       end
     end
