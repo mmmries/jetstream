@@ -350,12 +350,13 @@ defmodule Jetstream.API.Stream do
       iex> {:ok, %{total: _, offset: 0, limit: 1024, streams: _}} = Jetstream.API.Stream.list(:gnat)
 
   """
-  @spec list(conn :: Gnat.t(), params :: [offset: non_neg_integer()]) ::
+  @spec list(conn :: Gnat.t(), params :: [{:offset, non_neg_integer()}, {:subject, binary()}]) ::
           {:ok, streams()} | {:error, term()}
   def list(conn, params \\ []) do
     payload =
       Jason.encode!(%{
-        offset: Keyword.get(params, :offset, 0)
+        offset: Keyword.get(params, :offset, 0),
+        subject: Keyword.get(params, :subject)
       })
 
     with {:ok, decoded} <- request(conn, "$JS.API.STREAM.NAMES", payload) do

@@ -35,6 +35,31 @@ defmodule Jetstream.API.StreamTest do
     assert streams == nil || !("LIST_TEST" in streams)
   end
 
+  test "list/2 includes multiple streams" do
+    stream = %Stream{name: "LIST_SUBJECT_TEST_ONE", subjects: ["LIST_SUBJECT_TEST.subject1"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+    stream = %Stream{name: "LIST_SUBJECT_TEST_TWO", subjects: ["LIST_SUBJECT_TEST.subject2"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+
+    {:ok, %{streams: streams}} = Stream.list(:gnat)
+    assert "LIST_SUBJECT_TEST_ONE" in streams
+    assert "LIST_SUBJECT_TEST_TWO" in streams
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_ONE")
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_TWO")
+  end
+
+  test "list/2 can filter by subject" do
+    stream = %Stream{name: "LIST_SUBJECT_TEST_ONE", subjects: ["LIST_SUBJECT_TEST.subject1"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+    stream = %Stream{name: "LIST_SUBJECT_TEST_TWO", subjects: ["LIST_SUBJECT_TEST.subject2"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+
+    {:ok, %{streams: [stream]}} = Stream.list(:gnat, subject: "LIST_SUBJECT_TEST.subject2")
+    assert stream == "LIST_SUBJECT_TEST_TWO"
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_ONE")
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_TWO")
+  end
+
   test "updating a stream" do
     stream = %Stream{name: "UPDATE_TEST", subjects: ["STREAM_TEST"]}
     assert {:ok, _response} = Stream.create(:gnat, stream)
