@@ -345,6 +345,11 @@ defmodule Jetstream.API.Stream do
   @doc """
   Paged list of known Streams including all their current information.
 
+  ## Options
+
+  * `:offset`
+  * `:subject` - A subject the Stream must collect to appear in the list
+
   ## Examples
 
       iex> {:ok, %{total: _, offset: 0, limit: 1024, streams: _}} = Jetstream.API.Stream.list(:gnat)
