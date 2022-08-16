@@ -348,7 +348,7 @@ defmodule Jetstream.API.Stream do
   ## Options
 
   * `:offset`
-  * `:subject` - A subject the Stream must collect to appear in the list
+  * `:subject` - A subject the `Stream` must collect to appear in the list.
 
   ## Examples
 
