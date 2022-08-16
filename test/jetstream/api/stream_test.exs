@@ -68,6 +68,8 @@ defmodule Jetstream.API.StreamTest do
 
     {:ok, %{streams: [stream]}} = Stream.list(:gnat, offset: 1)
     assert "LIST_OFFSET_TEST_TWO" == stream
+    assert :ok = Stream.delete(:gnat, "LIST_OFFSET_TEST_ONE")
+    assert :ok = Stream.delete(:gnat, "LIST_OFFSET_TEST_TWO")
   end
 
   test "updating a stream" do
@@ -105,6 +107,8 @@ defmodule Jetstream.API.StreamTest do
              num_subjects: nil,
              subjects: nil
            }
+
+    assert :ok = Stream.delete(:gnat, "INFO_TEST")
   end
 
   test "creating a stream with non-standard settings" do
