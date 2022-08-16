@@ -345,17 +345,23 @@ defmodule Jetstream.API.Stream do
   @doc """
   Paged list of known Streams including all their current information.
 
+  ## Options
+
+  * `:offset` - Number of records to skip
+  * `:subject` - A subject the `Stream` must collect to appear in the list.
+
   ## Examples
 
       iex> {:ok, %{total: _, offset: 0, limit: 1024, streams: _}} = Jetstream.API.Stream.list(:gnat)
 
   """
-  @spec list(conn :: Gnat.t(), params :: [offset: non_neg_integer()]) ::
+  @spec list(conn :: Gnat.t(), params :: [{:offset, non_neg_integer()}, {:subject, binary()}]) ::
           {:ok, streams()} | {:error, term()}
   def list(conn, params \\ []) do
     payload =
       Jason.encode!(%{
-        offset: Keyword.get(params, :offset, 0)
+        offset: Keyword.get(params, :offset, 0),
+        subject: Keyword.get(params, :subject)
       })
 
     with {:ok, decoded} <- request(conn, "$JS.API.STREAM.NAMES", payload) do

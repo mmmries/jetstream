@@ -35,6 +35,50 @@ defmodule Jetstream.API.StreamTest do
     assert streams == nil || !("LIST_TEST" in streams)
   end
 
+  test "list/2 includes multiple streams" do
+    stream = %Stream{name: "LIST_SUBJECT_TEST_ONE", subjects: ["LIST_SUBJECT_TEST.subject1"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+    stream = %Stream{name: "LIST_SUBJECT_TEST_TWO", subjects: ["LIST_SUBJECT_TEST.subject2"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+
+    {:ok, %{streams: streams}} = Stream.list(:gnat)
+    assert "LIST_SUBJECT_TEST_ONE" in streams
+    assert "LIST_SUBJECT_TEST_TWO" in streams
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_ONE")
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_TWO")
+  end
+
+  test "list/2 can filter by subject" do
+    stream = %Stream{name: "LIST_SUBJECT_TEST_ONE", subjects: ["LIST_SUBJECT_TEST.subject1"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+    stream = %Stream{name: "LIST_SUBJECT_TEST_TWO", subjects: ["LIST_SUBJECT_TEST.subject2"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+
+    {:ok, %{streams: [stream]}} = Stream.list(:gnat, subject: "LIST_SUBJECT_TEST.subject2")
+    assert stream == "LIST_SUBJECT_TEST_TWO"
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_ONE")
+    assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_TWO")
+  end
+
+  test "list/2 includes accepts offset" do
+    stream = %Stream{name: "LIST_OFFSET_TEST_ONE", subjects: ["LIST_OFFSET_TEST.subject1"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+    stream = %Stream{name: "LIST_OFFSET_TEST_TWO", subjects: ["LIST_OFFSET_TEST.subject2"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+
+    {:ok, %{streams: streams}} = Stream.list(:gnat)
+    num_no_offset = Enum.count(streams)
+
+    {:ok, %{streams: streams}} = Stream.list(:gnat, offset: 1)
+    num_with_offset = Enum.count(streams)
+
+    # Checking offset functionality without a strict pattern match to keep this
+    # test passing even if another test forgets to delete a stream after it's done
+    assert num_no_offset - num_with_offset == 1
+    assert :ok = Stream.delete(:gnat, "LIST_OFFSET_TEST_ONE")
+    assert :ok = Stream.delete(:gnat, "LIST_OFFSET_TEST_TWO")
+  end
+
   test "updating a stream" do
     stream = %Stream{name: "UPDATE_TEST", subjects: ["STREAM_TEST"]}
     assert {:ok, _response} = Stream.create(:gnat, stream)
@@ -70,6 +114,8 @@ defmodule Jetstream.API.StreamTest do
              num_subjects: nil,
              subjects: nil
            }
+
+    assert :ok = Stream.delete(:gnat, "INFO_TEST")
   end
 
   test "creating a stream with non-standard settings" do
@@ -86,6 +132,7 @@ defmodule Jetstream.API.StreamTest do
     assert result.duplicate_window == 100_000_000
     assert result.retention == :workqueue
     assert result.storage == :memory
+    assert :ok = Stream.delete(:gnat, "ARGS_TEST")
   end
 
   test "validating stream names" do
