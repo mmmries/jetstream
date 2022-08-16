@@ -66,8 +66,15 @@ defmodule Jetstream.API.StreamTest do
     stream = %Stream{name: "LIST_OFFSET_TEST_TWO", subjects: ["LIST_OFFSET_TEST.subject2"]}
     {:ok, _response} = Stream.create(:gnat, stream)
 
-    {:ok, %{streams: [stream]}} = Stream.list(:gnat, offset: 1)
-    assert "LIST_OFFSET_TEST_TWO" == stream
+    {:ok, %{streams: streams}} = Stream.list(:gnat)
+    num_no_offset = Enum.count(streams)
+
+    {:ok, %{streams: streams}} = Stream.list(:gnat, offset: 1)
+    num_with_offset = Enum.count(streams)
+
+    # Checking offset functionality without a strict pattern match to keep this
+    # test passing even if another test forgets to delete a stream after it's done
+    assert num_no_offset - num_with_offset == 1
     assert :ok = Stream.delete(:gnat, "LIST_OFFSET_TEST_ONE")
     assert :ok = Stream.delete(:gnat, "LIST_OFFSET_TEST_TWO")
   end
