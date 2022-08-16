@@ -60,6 +60,16 @@ defmodule Jetstream.API.StreamTest do
     assert :ok = Stream.delete(:gnat, "LIST_SUBJECT_TEST_TWO")
   end
 
+  test "list/2 includes accepts offset" do
+    stream = %Stream{name: "LIST_OFFSET_TEST_ONE", subjects: ["LIST_OFFSET_TEST.subject1"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+    stream = %Stream{name: "LIST_OFFSET_TEST_TWO", subjects: ["LIST_OFFSET_TEST.subject2"]}
+    {:ok, _response} = Stream.create(:gnat, stream)
+
+    {:ok, %{streams: [stream]}} = Stream.list(:gnat, offset: 1)
+    assert "LIST_OFFSET_TEST_TWO" == stream
+  end
+
   test "updating a stream" do
     stream = %Stream{name: "UPDATE_TEST", subjects: ["STREAM_TEST"]}
     assert {:ok, _response} = Stream.create(:gnat, stream)

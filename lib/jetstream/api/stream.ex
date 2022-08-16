@@ -347,7 +347,7 @@ defmodule Jetstream.API.Stream do
 
   ## Options
 
-  * `:offset`
+  * `:offset` - Number of records to skip
   * `:subject` - A subject the `Stream` must collect to appear in the list.
 
   ## Examples
