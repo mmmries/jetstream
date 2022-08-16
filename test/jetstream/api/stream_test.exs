@@ -125,6 +125,7 @@ defmodule Jetstream.API.StreamTest do
     assert result.duplicate_window == 100_000_000
     assert result.retention == :workqueue
     assert result.storage == :memory
+    assert :ok = Stream.delete(:gnat, "ARGS_TEST")
   end
 
   test "validating stream names" do

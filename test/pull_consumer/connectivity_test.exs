@@ -54,6 +54,10 @@ defmodule Jetstream.PullConsumer.ConnectivityTest do
       consumer = %Consumer{stream_name: stream_name, durable_name: consumer_name}
       {:ok, _response} = Consumer.create(:gnat, consumer)
 
+      on_exit(fn ->
+        cleanup()
+      end)
+
       %{
         stream_name: stream_name,
         consumer_name: consumer_name
@@ -159,5 +163,13 @@ defmodule Jetstream.PullConsumer.ConnectivityTest do
 
       assert_receive {:msg, %{body: ^expected_body, reply_to: "CUSTOM_PREFIX." <> _}}
     end
+  end
+
+  defp cleanup do
+    # Manage connection on our own here, because all supervised processes will be
+    # closed by the time `on_exit` runs
+    {:ok, pid} = Gnat.start_link()
+    :ok = Stream.delete(pid, "TEST_STREAM")
+    Gnat.stop(pid)
   end
 end
