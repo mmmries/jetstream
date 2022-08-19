@@ -1,7 +1,7 @@
 defmodule Jetstream.MixProject do
   use Mix.Project
 
-  @version "0.0.1-pre2"
+  @version "0.0.2"
   @github "https://github.com/mmmries/jetstream"
 
   def project do
@@ -37,7 +37,7 @@ defmodule Jetstream.MixProject do
       {:connection, "~> 1.0"},
       {:gnat, "~> 1.1"},
       {:jason, "~> 1.1"},
-      {:ex_doc, "~> 0.28", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.27.3", only: :dev, runtime: false}
     ]
   end
 
