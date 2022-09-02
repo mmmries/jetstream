@@ -6,7 +6,7 @@ defmodule Jetstream.PullConsumer.Server do
   use Connection
 
   alias Jetstream.PullConsumer.ConnectionOptions
-  alias Jetstream.PullConsumer.Util
+  alias Jetstream.API.Util
 
   defstruct [
     :connection_options,
@@ -29,7 +29,7 @@ defmodule Jetstream.PullConsumer.Server do
         gen_state = %__MODULE__{
           connection_options: connection_options,
           state: state,
-          listening_topic: Util.new_listening_topic(connection_options),
+          listening_topic: Util.reply_inbox(connection_options.inbox_prefix),
           module: module
         }
 

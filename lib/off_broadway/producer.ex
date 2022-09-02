@@ -130,7 +130,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
     alias Broadway.Message
     alias Broadway.Producer
     alias Jetstream.PullConsumer.ConnectionOptions
-    alias Jetstream.PullConsumer.Util
+    alias Jetstream.API.Util
     alias OffBroadway.Jetstream.Acknowledger
 
     @behaviour Producer
@@ -165,7 +165,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
         ])
         |> ConnectionOptions.validate!()
 
-      listening_topic = Util.new_listening_topic(connection_options)
+      listening_topic = Util.reply_inbox(connection_options.inbox_prefix)
 
       case Acknowledger.init(opts) do
         {:ok, ack_ref} ->
