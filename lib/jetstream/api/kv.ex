@@ -114,6 +114,7 @@ defmodule Jetstream.API.KV do
 
       iex>:ok = Jetstream.API.KV.purge_key(:gnat, "my_bucket", "my_key")
   """
+  @spec purge_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) :: :ok
   def purge_key(conn, bucket_name, key) do
     Gnat.pub(conn, key_name(bucket_name, key), "",
       headers: [{"KV-Operation", "PURGE"}, {"Nats-Rollup", "sub"}]
