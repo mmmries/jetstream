@@ -65,4 +65,19 @@ defmodule Jetstream.API.KVTest do
     assert "baz" = KV.get_value(:gnat, "KEY_PUT_TEST", "foo")
     assert :ok = KV.delete_bucket(:gnat, "KEY_PUT_TEST")
   end
+
+  describe "list_keys/2" do
+    setup do
+      bucket = "KEY_LIST_TEST"
+      {:ok, _} = KV.create_bucket(:gnat, bucket)
+      %{bucket: bucket}
+    end
+
+    test "provides all keys", %{bucket: bucket} do
+      KV.put_value(:gnat, bucket, "foo", "bar")
+      KV.put_value(:gnat, bucket, "baz", "quz")
+      assert ["foo", "baz"] == KV.list_keys(:gnat, bucket)
+      :ok = KV.delete_bucket(:gnat, bucket)
+    end
+  end
 end

@@ -4,7 +4,7 @@ defmodule Jetstream.API.KV do
 
   Learn about the Key/Value store: https://docs.nats.io/nats-concepts/jetstream/key-value-store
   """
-  alias Jetstream.API.Stream
+  alias Jetstream.API.{Consumer, Stream, Util}
 
   @stream_prefix "KV_"
   @subject_prefix "$KV."
@@ -150,6 +150,60 @@ defmodule Jetstream.API.KV do
       {:ok, message} -> message.data
       error -> error
     end
+  end
+
+  @doc """
+  Get all the non-deleted keys for a Key Value Bucket
+
+  ## Examples
+
+      iex>["key1", "key2"] = Jetstream.API.KV.list_keys(:gnat, "my_bucket")
+  """
+  @spec list_keys(conn :: Gnat.t(), bucket_name :: binary()) :: [binary()]
+  def list_keys(conn, bucket_name) do
+    stream = stream_name(bucket_name)
+    inbox = Util.reply_inbox()
+
+    task =
+      Task.async(fn ->
+        {:ok, sub} = Gnat.sub(conn, self(), inbox)
+
+        gather_messages = fn func, count ->
+          receive do
+            {:msg, %{topic: _key, body: _body} = msg} ->
+              IO.inspect("count: #{count}")
+              IO.inspect(msg, label: "MSG")
+              Jetstream.ack(msg)
+              # IO.inspect("key: #{key}")
+              # IO.inspect("body: #{body}")
+              func.(func, count + 1)
+
+            other ->
+              IO.inspect(other, label: "OTHER")
+          end
+        end
+
+        gather_messages.(gather_messages, 1)
+
+        Gnat.unsub(conn, sub)
+      end)
+
+    {:ok, %{name: consumer_name} = consumer} =
+      Consumer.create(conn, %Consumer{
+        deliver_subject: inbox,
+        stream_name: stream,
+        ack_policy: :none
+      })
+
+    IO.inspect(consumer, label: "CONSUMER")
+
+    Task.await(task)
+
+    :ok = Consumer.delete(conn, stream, consumer_name)
+  end
+
+  defp gather_keys(msg) do
+    IO.inspect(msg, label: "msg")
   end
 
   defp stream_name(bucket_name) do
