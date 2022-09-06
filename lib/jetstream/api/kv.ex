@@ -188,26 +188,21 @@ defmodule Jetstream.API.KV do
     keys
   end
 
-  defp receive_keys() do
-    gather_messages = fn
-      func, keys ->
-        receive do
-          {:msg, %{topic: key, headers: headers}} ->
-            if {"kv-operation", "DEL"} in headers do
-              func.(func, keys)
-            else
-              func.(func, [key | keys])
-            end
-
-          {:msg, %{topic: key}} ->
-            func.(func, [key | keys])
-        after
-          100 ->
-            keys
+  defp receive_keys(keys \\ []) do
+    receive do
+      {:msg, %{topic: key, headers: headers}} ->
+        if {"kv-operation", "DEL"} in headers do
+          receive_keys(keys)
+        else
+          receive_keys([key | keys])
         end
-    end
 
-    gather_messages.(gather_messages, [])
+      {:msg, %{topic: key}} ->
+        receive_keys([key | keys])
+    after
+      100 ->
+        keys
+    end
   end
 
   defp stream_name(bucket_name) do
