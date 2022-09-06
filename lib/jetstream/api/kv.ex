@@ -163,47 +163,51 @@ defmodule Jetstream.API.KV do
   def list_keys(conn, bucket_name) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
+    consumer_name = "list_keys_consumer_#{Util.nuid()}"
 
-    task =
-      Task.async(fn ->
-        {:ok, sub} = Gnat.sub(conn, self(), inbox)
+    {:ok, sub} = Gnat.sub(conn, self(), inbox)
 
-        gather_messages = fn func, count ->
-          receive do
-            {:msg, %{topic: _key, body: _body} = msg} ->
-              IO.inspect("count: #{count}")
-              IO.inspect(msg, label: "MSG")
-              Jetstream.ack(msg)
-              # IO.inspect("key: #{key}")
-              # IO.inspect("body: #{body}")
-              func.(func, count + 1)
-
-            other ->
-              IO.inspect(other, label: "OTHER")
-          end
-        end
-
-        gather_messages.(gather_messages, 1)
-
-        Gnat.unsub(conn, sub)
-      end)
-
-    {:ok, %{name: consumer_name} = consumer} =
+    {:ok, _consumer} =
       Consumer.create(conn, %Consumer{
+        durable_name: consumer_name,
         deliver_subject: inbox,
         stream_name: stream,
-        ack_policy: :none
+        ack_policy: :none,
+        max_ack_pending: -1,
+        max_deliver: 1
       })
 
-    IO.inspect(consumer, label: "CONSUMER")
+    keys =
+      receive_keys()
+      |> Enum.map(fn key -> String.replace(key, "#{@subject_prefix}#{bucket_name}.", "") end)
+      |> Enum.sort()
 
-    Task.await(task)
-
+    :ok = Gnat.unsub(conn, sub)
     :ok = Consumer.delete(conn, stream, consumer_name)
+
+    keys
   end
 
-  defp gather_keys(msg) do
-    IO.inspect(msg, label: "msg")
+  defp receive_keys() do
+    gather_messages = fn
+      func, keys ->
+        receive do
+          {:msg, %{topic: key, headers: headers}} ->
+            if {"kv-operation", "DEL"} in headers do
+              func.(func, keys)
+            else
+              func.(func, [key | keys])
+            end
+
+          {:msg, %{topic: key}} ->
+            func.(func, [key | keys])
+        after
+          100 ->
+            keys
+        end
+    end
+
+    gather_messages.(gather_messages, [])
   end
 
   defp stream_name(bucket_name) do

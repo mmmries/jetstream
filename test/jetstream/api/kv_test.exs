@@ -76,7 +76,15 @@ defmodule Jetstream.API.KVTest do
     test "provides all keys", %{bucket: bucket} do
       KV.put_value(:gnat, bucket, "foo", "bar")
       KV.put_value(:gnat, bucket, "baz", "quz")
-      assert ["foo", "baz"] == KV.list_keys(:gnat, bucket)
+      assert ["baz", "foo"] == KV.list_keys(:gnat, bucket)
+      :ok = KV.delete_bucket(:gnat, bucket)
+    end
+
+    test "deleted keys not included", %{bucket: bucket} do
+      KV.put_value(:gnat, bucket, "foo", "bar")
+      KV.put_value(:gnat, bucket, "baz", "quz")
+      KV.delete_key(:gnat, bucket, "baz")
+      assert ["foo"] == KV.list_keys(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
   end
