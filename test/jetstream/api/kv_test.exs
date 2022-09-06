@@ -87,5 +87,10 @@ defmodule Jetstream.API.KVTest do
       assert ["foo"] == KV.list_keys(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
+
+    test "empty list for no keys", %{bucket: bucket} do
+      assert [] == KV.list_keys(:gnat, bucket)
+      :ok = KV.delete_bucket(:gnat, bucket)
+    end
   end
 end
