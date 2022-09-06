@@ -177,10 +177,7 @@ defmodule Jetstream.API.KV do
         max_deliver: 1
       })
 
-    keys =
-      receive_keys()
-      |> Enum.map(fn {key, value} -> {subject_to_key(key, bucket_name), value} end)
-      |> Enum.into(%{})
+    keys = receive_keys(bucket_name)
 
     :ok = Gnat.unsub(conn, sub)
     :ok = Consumer.delete(conn, stream, consumer_name)
@@ -188,17 +185,17 @@ defmodule Jetstream.API.KV do
     keys
   end
 
-  defp receive_keys(keys \\ %{}) do
+  defp receive_keys(keys \\ %{}, bucket_name) do
     receive do
       {:msg, %{topic: key, body: body, headers: headers}} ->
         if {"kv-operation", "DEL"} in headers do
-          receive_keys(keys)
+          receive_keys(keys, bucket_name)
         else
-          Map.put(keys, key, body) |> receive_keys()
+          Map.put(keys, subject_to_key(key, bucket_name), body) |> receive_keys(bucket_name)
         end
 
       {:msg, %{topic: key, body: body}} ->
-        Map.put(keys, key, body) |> receive_keys()
+        Map.put(keys, subject_to_key(key, bucket_name), body) |> receive_keys(bucket_name)
     after
       100 ->
         keys
