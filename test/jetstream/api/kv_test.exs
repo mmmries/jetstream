@@ -66,7 +66,7 @@ defmodule Jetstream.API.KVTest do
     assert :ok = KV.delete_bucket(:gnat, "KEY_PUT_TEST")
   end
 
-  describe "list_keys/2" do
+  describe "all_values/2" do
     setup do
       bucket = "KEY_LIST_TEST"
       {:ok, _} = KV.create_bucket(:gnat, bucket)
@@ -76,7 +76,7 @@ defmodule Jetstream.API.KVTest do
     test "provides all keys", %{bucket: bucket} do
       KV.put_value(:gnat, bucket, "foo", "bar")
       KV.put_value(:gnat, bucket, "baz", "quz")
-      assert ["baz", "foo"] == KV.list_keys(:gnat, bucket)
+      assert %{"foo" => "bar", "baz" => "quz"} == KV.all_values(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
 
@@ -84,12 +84,21 @@ defmodule Jetstream.API.KVTest do
       KV.put_value(:gnat, bucket, "foo", "bar")
       KV.put_value(:gnat, bucket, "baz", "quz")
       KV.delete_key(:gnat, bucket, "baz")
-      assert ["foo"] == KV.list_keys(:gnat, bucket)
+      assert %{"foo" => "bar"} == KV.all_values(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
 
-    test "empty list for no keys", %{bucket: bucket} do
-      assert [] == KV.list_keys(:gnat, bucket)
+    test "updated keys use most recent", %{bucket: bucket} do
+      :ok = KV.delete_bucket(:gnat, bucket)
+      {:ok, _} = KV.create_bucket(:gnat, bucket, history: 5)
+      KV.put_value(:gnat, bucket, "foo", "bar")
+      KV.put_value(:gnat, bucket, "foo", "baz")
+      assert %{"foo" => "baz"} == KV.all_values(:gnat, bucket)
+      :ok = KV.delete_bucket(:gnat, bucket)
+    end
+
+    test "empty for no keys", %{bucket: bucket} do
+      assert %{} == KV.all_values(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
   end

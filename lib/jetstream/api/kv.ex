@@ -153,17 +153,17 @@ defmodule Jetstream.API.KV do
   end
 
   @doc """
-  Get all the non-deleted keys for a Key Value Bucket
+  Get all the non-deleted values for a Key Value Bucket
 
   ## Examples
 
-      iex>["key1", "key2"] = Jetstream.API.KV.list_keys(:gnat, "my_bucket")
+      iex>%{"key1" => "value1} = Jetstream.API.KV.list_keys(:gnat, "my_bucket")
   """
-  @spec list_keys(conn :: Gnat.t(), bucket_name :: binary()) :: [binary()]
-  def list_keys(conn, bucket_name) do
+  @spec all_values(conn :: Gnat.t(), bucket_name :: binary()) :: %{}
+  def all_values(conn, bucket_name) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
-    consumer_name = "list_keys_consumer_#{Util.nuid()}"
+    consumer_name = "all_key_values_consumer_#{Util.nuid()}"
 
     {:ok, sub} = Gnat.sub(conn, self(), inbox)
 
@@ -179,8 +179,8 @@ defmodule Jetstream.API.KV do
 
     keys =
       receive_keys()
-      |> Enum.map(fn key -> String.replace(key, "#{@subject_prefix}#{bucket_name}.", "") end)
-      |> Enum.sort()
+      |> Enum.map(fn {key, value} -> {subject_to_key(key, bucket_name), value} end)
+      |> Enum.into(%{})
 
     :ok = Gnat.unsub(conn, sub)
     :ok = Consumer.delete(conn, stream, consumer_name)
@@ -188,17 +188,17 @@ defmodule Jetstream.API.KV do
     keys
   end
 
-  defp receive_keys(keys \\ []) do
+  defp receive_keys(keys \\ %{}) do
     receive do
-      {:msg, %{topic: key, headers: headers}} ->
+      {:msg, %{topic: key, body: body, headers: headers}} ->
         if {"kv-operation", "DEL"} in headers do
           receive_keys(keys)
         else
-          receive_keys([key | keys])
+          Map.put(keys, key, body) |> receive_keys()
         end
 
-      {:msg, %{topic: key}} ->
-        receive_keys([key | keys])
+      {:msg, %{topic: key, body: body}} ->
+        Map.put(keys, key, body) |> receive_keys()
     after
       100 ->
         keys
@@ -215,5 +215,9 @@ defmodule Jetstream.API.KV do
 
   defp key_name(bucket_name, key) do
     "#{@subject_prefix}#{bucket_name}.#{key}"
+  end
+
+  defp subject_to_key(subject, bucket_name) do
+    String.replace(subject, "#{@subject_prefix}#{bucket_name}.", "")
   end
 end
