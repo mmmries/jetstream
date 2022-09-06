@@ -153,14 +153,14 @@ defmodule Jetstream.API.KV do
   end
 
   @doc """
-  Get all the non-deleted values for a Key Value Bucket
+  Get all the non-deleted key-value pairs for a Bucket
 
   ## Examples
 
-      iex>%{"key1" => "value1} = Jetstream.API.KV.all_values(:gnat, "my_bucket")
+      iex>%{"key1" => "value1} = Jetstream.API.KV.contents(:gnat, "my_bucket")
   """
-  @spec all_values(conn :: Gnat.t(), bucket_name :: binary()) :: %{}
-  def all_values(conn, bucket_name) do
+  @spec contents(conn :: Gnat.t(), bucket_name :: binary()) :: %{}
+  def contents(conn, bucket_name) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
     consumer_name = "all_key_values_consumer_#{Util.nuid()}"
