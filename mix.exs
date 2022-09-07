@@ -1,7 +1,7 @@
 defmodule Jetstream.MixProject do
   use Mix.Project
 
-  @version "0.0.2"
+  @version "0.0.3"
   @github "https://github.com/mmmries/jetstream"
 
   def project do
@@ -46,7 +46,8 @@ defmodule Jetstream.MixProject do
       description: "A Jetstream client in pure Elixir.",
       licenses: ["Apache-2.0"],
       links: %{
-        "GitHub" => @github
+        "GitHub" => @github,
+        "Changelog" => "#{@github}/blob/master/CHANGELOG.md"
       },
       maintainers: [
         "Michael Ries",
@@ -63,6 +64,7 @@ defmodule Jetstream.MixProject do
       main: "overview",
       source_ref: "v#{@version}",
       extras: [
+        "CHANGELOG.md",
         "docs/introduction/overview.md",
         "docs/introduction/getting_started.md",
         "docs/guides/managing.md",
