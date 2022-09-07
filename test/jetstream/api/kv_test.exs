@@ -76,7 +76,7 @@ defmodule Jetstream.API.KVTest do
     test "provides all keys", %{bucket: bucket} do
       KV.put_value(:gnat, bucket, "foo", "bar")
       KV.put_value(:gnat, bucket, "baz", "quz")
-      assert %{"foo" => "bar", "baz" => "quz"} == KV.contents(:gnat, bucket)
+      assert {:ok, %{"foo" => "bar", "baz" => "quz"}} == KV.contents(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
 
@@ -84,7 +84,7 @@ defmodule Jetstream.API.KVTest do
       KV.put_value(:gnat, bucket, "foo", "bar")
       KV.put_value(:gnat, bucket, "baz", "quz")
       KV.delete_key(:gnat, bucket, "baz")
-      assert %{"foo" => "bar"} == KV.contents(:gnat, bucket)
+      assert {:ok, %{"foo" => "bar"}} == KV.contents(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
 
@@ -93,12 +93,17 @@ defmodule Jetstream.API.KVTest do
       {:ok, _} = KV.create_bucket(:gnat, bucket, history: 5)
       KV.put_value(:gnat, bucket, "foo", "bar")
       KV.put_value(:gnat, bucket, "foo", "baz")
-      assert %{"foo" => "baz"} == KV.contents(:gnat, bucket)
+      assert {:ok, %{"foo" => "baz"}} == KV.contents(:gnat, bucket)
       :ok = KV.delete_bucket(:gnat, bucket)
     end
 
     test "empty for no keys", %{bucket: bucket} do
-      assert %{} == KV.contents(:gnat, bucket)
+      assert {:ok, %{}} == KV.contents(:gnat, bucket)
+      :ok = KV.delete_bucket(:gnat, bucket)
+    end
+
+    test "error tuple if problem", %{bucket: bucket} do
+      assert {:error, _message} = KV.contents(:gnat, "NOT_REAL_BUCKET")
       :ok = KV.delete_bucket(:gnat, bucket)
     end
   end

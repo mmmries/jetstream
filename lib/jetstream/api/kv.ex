@@ -157,32 +157,31 @@ defmodule Jetstream.API.KV do
 
   ## Examples
 
-      iex>%{"key1" => "value1} = Jetstream.API.KV.contents(:gnat, "my_bucket")
+      iex>{:ok, %{"key1" => "value1}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
   """
-  @spec contents(conn :: Gnat.t(), bucket_name :: binary()) :: %{}
+  @spec contents(conn :: Gnat.t(), bucket_name :: binary()) :: {:ok, map()} | {:error, binary()}
   def contents(conn, bucket_name) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
     consumer_name = "all_key_values_consumer_#{Util.nuid()}"
 
-    {:ok, sub} = Gnat.sub(conn, self(), inbox)
+    with {:ok, sub} <- Gnat.sub(conn, self(), inbox),
+         {:ok, _consumer} <-
+           Consumer.create(conn, %Consumer{
+             durable_name: consumer_name,
+             deliver_subject: inbox,
+             stream_name: stream,
+             ack_policy: :none,
+             max_ack_pending: -1,
+             max_deliver: 1
+           }) do
+      keys = receive_keys(bucket_name)
 
-    {:ok, _consumer} =
-      Consumer.create(conn, %Consumer{
-        durable_name: consumer_name,
-        deliver_subject: inbox,
-        stream_name: stream,
-        ack_policy: :none,
-        max_ack_pending: -1,
-        max_deliver: 1
-      })
+      :ok = Gnat.unsub(conn, sub)
+      :ok = Consumer.delete(conn, stream, consumer_name)
 
-    keys = receive_keys(bucket_name)
-
-    :ok = Gnat.unsub(conn, sub)
-    :ok = Consumer.delete(conn, stream, consumer_name)
-
-    keys
+      {:ok, keys}
+    end
   end
 
   defp receive_keys(keys \\ %{}, bucket_name) do
