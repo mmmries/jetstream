@@ -1,6 +1,8 @@
 defmodule Jetstream.API.Util do
   @moduledoc false
 
+  @default_inbox_prefix "_INBOX."
+
   def request(conn, topic, payload) do
     with {:ok, %{body: body}} <- Gnat.request(conn, topic, payload),
          {:ok, decoded} <- Jason.decode(body) do
@@ -44,4 +46,12 @@ defmodule Jetstream.API.Util do
 
   def decode_base64(nil), do: nil
   def decode_base64(data), do: Base.decode64!(data)
+
+  def reply_inbox(prefix \\ @default_inbox_prefix)
+  def reply_inbox(nil), do: reply_inbox()
+  def reply_inbox(prefix), do: prefix <> nuid()
+
+  def nuid() do
+    :crypto.strong_rand_bytes(12) |> Base.encode64()
+  end
 end

@@ -4,7 +4,7 @@ defmodule Jetstream.API.KV do
 
   Learn about the Key/Value store: https://docs.nats.io/nats-concepts/jetstream/key-value-store
   """
-  alias Jetstream.API.Stream
+  alias Jetstream.API.{Consumer, Stream, Util}
 
   @stream_prefix "KV_"
   @subject_prefix "$KV."
@@ -114,6 +114,7 @@ defmodule Jetstream.API.KV do
 
       iex>:ok = Jetstream.API.KV.purge_key(:gnat, "my_bucket", "my_key")
   """
+  @spec purge_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) :: :ok
   def purge_key(conn, bucket_name, key) do
     Gnat.pub(conn, key_name(bucket_name, key), "",
       headers: [{"KV-Operation", "PURGE"}, {"Nats-Rollup", "sub"}]
@@ -151,6 +152,55 @@ defmodule Jetstream.API.KV do
     end
   end
 
+  @doc """
+  Get all the non-deleted key-value pairs for a Bucket
+
+  ## Examples
+
+      iex>{:ok, %{"key1" => "value1}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
+  """
+  @spec contents(conn :: Gnat.t(), bucket_name :: binary()) :: {:ok, map()} | {:error, binary()}
+  def contents(conn, bucket_name) do
+    stream = stream_name(bucket_name)
+    inbox = Util.reply_inbox()
+    consumer_name = "all_key_values_consumer_#{Util.nuid()}"
+
+    with {:ok, sub} <- Gnat.sub(conn, self(), inbox),
+         {:ok, _consumer} <-
+           Consumer.create(conn, %Consumer{
+             durable_name: consumer_name,
+             deliver_subject: inbox,
+             stream_name: stream,
+             ack_policy: :none,
+             max_ack_pending: -1,
+             max_deliver: 1
+           }) do
+      keys = receive_keys(bucket_name)
+
+      :ok = Gnat.unsub(conn, sub)
+      :ok = Consumer.delete(conn, stream, consumer_name)
+
+      {:ok, keys}
+    end
+  end
+
+  defp receive_keys(keys \\ %{}, bucket_name) do
+    receive do
+      {:msg, %{topic: key, body: body, headers: headers}} ->
+        if {"kv-operation", "DEL"} in headers do
+          receive_keys(keys, bucket_name)
+        else
+          Map.put(keys, subject_to_key(key, bucket_name), body) |> receive_keys(bucket_name)
+        end
+
+      {:msg, %{topic: key, body: body}} ->
+        Map.put(keys, subject_to_key(key, bucket_name), body) |> receive_keys(bucket_name)
+    after
+      100 ->
+        keys
+    end
+  end
+
   defp stream_name(bucket_name) do
     "#{@stream_prefix}#{bucket_name}"
   end
@@ -161,5 +211,9 @@ defmodule Jetstream.API.KV do
 
   defp key_name(bucket_name, key) do
     "#{@subject_prefix}#{bucket_name}.#{key}"
+  end
+
+  defp subject_to_key(subject, bucket_name) do
+    String.replace(subject, "#{@subject_prefix}#{bucket_name}.", "")
   end
 end
