@@ -157,13 +157,13 @@ defmodule Jetstream.API.KV do
 
   ## Examples
 
-      iex>{:ok, %{"key1" => "value1}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
+      iex>{:ok, %{"key1" => "value1"}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
   """
   @spec contents(conn :: Gnat.t(), bucket_name :: binary()) :: {:ok, map()} | {:error, binary()}
   def contents(conn, bucket_name) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
-    consumer_name = "all_key_values_consumer_#{Util.nuid()}"
+    consumer_name = "all_key_values_consumer_#{System.unique_integer([:positive, :monotonic])}"
 
     with {:ok, sub} <- Gnat.sub(conn, self(), inbox),
          {:ok, _consumer} <-
