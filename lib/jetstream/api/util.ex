@@ -52,6 +52,6 @@ defmodule Jetstream.API.Util do
   def reply_inbox(prefix), do: prefix <> nuid()
 
   def nuid() do
-    :crypto.strong_rand_bytes(12) |> Base.encode64()
+    :crypto.strong_rand_bytes(12) |> Base.url_encode64()
   end
 end

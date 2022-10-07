@@ -163,7 +163,7 @@ defmodule Jetstream.API.KV do
   def contents(conn, bucket_name) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
-    consumer_name = "all_key_values_consumer_#{System.unique_integer([:positive, :monotonic])}"
+    consumer_name = "all_key_values_consumer_#{Util.nuid()}"
 
     with {:ok, sub} <- Gnat.sub(conn, self(), inbox),
          {:ok, _consumer} <-
