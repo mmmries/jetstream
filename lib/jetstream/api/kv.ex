@@ -157,7 +157,7 @@ defmodule Jetstream.API.KV do
 
   ## Examples
 
-      iex>{:ok, %{"key1" => "value1}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
+      iex>{:ok, %{"key1" => "value1"}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
   """
   @spec contents(conn :: Gnat.t(), bucket_name :: binary()) :: {:ok, map()} | {:error, binary()}
   def contents(conn, bucket_name) do
