@@ -11,7 +11,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
     end
 
     def handle_message(_, message, %{test_pid: test_pid}) do
-      send(test_pid, {:message_handled, message.data})
+      send(test_pid, {:message_handled, message})
       message
     end
 
@@ -45,7 +45,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
       for i <- 1..5 do
         expected_message = "message #{i}"
 
-        assert_receive {:message_handled, ^expected_message}
+        assert_receive {:message_handled, %{data: ^expected_message, metadata: %{headers: []}}}
       end
     end
 
@@ -55,20 +55,20 @@ defmodule OffBroadway.Jetstream.ProducerTest do
       for i <- 1..20 do
         expected_message = "message #{i}"
 
-        assert_receive {:message_handled, ^expected_message}
+        assert_receive {:message_handled, %{data: ^expected_message}}
       end
     end
 
     test "keep trying to receive new messages when the queue is empty" do
       {:ok, _} = Gnat.request(:gnat, "broadway", "message 1")
 
-      assert_receive {:message_handled, "message 1"}
+      assert_receive {:message_handled, %{data: "message 1"}}
 
       {:ok, _} = Gnat.request(:gnat, "broadway", "message 2")
       {:ok, _} = Gnat.request(:gnat, "broadway", "message 3")
 
-      assert_receive {:message_handled, "message 2"}
-      assert_receive {:message_handled, "message 3"}
+      assert_receive {:message_handled, %{data: "message 2"}}
+      assert_receive {:message_handled, %{data: "message 3"}}
     end
 
     test "stop trying to receive new messages after start draining", %{
@@ -83,7 +83,7 @@ defmodule OffBroadway.Jetstream.ProducerTest do
 
       {:ok, _} = Gnat.request(:gnat, "broadway", "message")
 
-      refute_receive {:message_handled, "message"}
+      refute_receive {:message_handled, %{data: "message"}}
     end
   end
 

@@ -378,7 +378,8 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       %Message{
         data: jetstream_message.body,
         metadata: %{
-          topic: jetstream_message.topic
+          topic: jetstream_message.topic,
+          headers: Map.get(jetstream_message, :headers, [])
         },
         acknowledger: acknowledger
       }
