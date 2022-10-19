@@ -2,7 +2,7 @@
 
 ## 0.0.5
 
-* Include NATS headers in Broadway.Message metadata https://github.com/mmmries/jetstream/pull/68
+* Include NATS headers in `Broadway.Message` metadata https://github.com/mmmries/jetstream/pull/68
 
 ## 0.0.4
 
