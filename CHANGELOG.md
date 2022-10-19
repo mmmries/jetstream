@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.5
+
+* Include NATS headers in `Broadway.Message` metadata https://github.com/mmmries/jetstream/pull/68
+
 ## 0.0.4
 
 * fix bug with `Jetstream.API.KV.contents/2` where consumer names sometimes had `/` characters. https://github.com/mmmries/jetstream/pull/66
