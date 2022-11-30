@@ -66,6 +66,34 @@ defmodule Jetstream.API.KVTest do
     assert :ok = KV.delete_bucket(:gnat, "KEY_PUT_TEST")
   end
 
+  describe "watch/3" do
+    setup do
+      bucket = "KEY_WATCH_TEST"
+      {:ok, _} = KV.create_bucket(:gnat, bucket)
+      %{bucket: bucket}
+    end
+
+    test "detects key added and removed keys", %{bucket: bucket} do
+      {:ok, watchres} =
+        KV.watch(:gnat, bucket, fn action, key, value ->
+          # turn this into an assert?
+          IO.inspect(action)
+          IO.inspect(key)
+          IO.inspect(value)
+        end)
+
+      KV.put_value(:gnat, bucket, "foo", "bar")
+      KV.put_value(:gnat, bucket, "baz", "quz")
+      KV.delete_key(:gnat, bucket, "baz")
+
+      # remove this
+      :timer.sleep(500)
+      KV.unwatch(:gnat, bucket, watchres)
+
+      :ok = KV.delete_bucket(:gnat, bucket)
+    end
+  end
+
   describe "contents/2" do
     setup do
       bucket = "KEY_LIST_TEST"

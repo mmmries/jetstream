@@ -184,6 +184,66 @@ defmodule Jetstream.API.KV do
     end
   end
 
+  @doc """
+  Watches a bucket for addition and removal. You supply a handler that will receive add and
+  remove messages.
+
+  ## Examples
+
+      iex>{:ok, sub, consumer} = KV.watch(:gnat, "my_bucket", fn action, key, value -> IO.puts(action) end)
+  """
+  # @type watch_handler  (:key_added | :key_removed, String.t(), binary() -> nil)
+  # @spec watch(conn :: Gnat.t(), bucket_name :: binary(), handler :: watch_handler()) :: {:ok, {pid(), String.t()}}
+  def watch(conn, bucket_name, handler) do
+    stream = stream_name(bucket_name)
+    inbox = Util.reply_inbox()
+    consumer_name = "all_key_values_watcher_#{Util.nuid()}"
+
+    {:ok, int_handler} =
+      Task.start(fn ->
+        receive_watched_keys(bucket_name, handler)
+      end)
+
+    with {:ok, sub} <- Gnat.sub(conn, int_handler, inbox),
+         {:ok, _consumer} <-
+           Consumer.create(conn, %Consumer{
+             durable_name: consumer_name,
+             deliver_subject: inbox,
+             stream_name: stream,
+             ack_policy: :none,
+             max_ack_pending: -1,
+             max_deliver: 1
+           }) do
+      {:ok, {sub, consumer_name}}
+    end
+  end
+
+  @doc """
+  Stops watching a given bucket. Supply the results of the watch function to stop it
+  """
+  def unwatch(conn, bucket_name, {sub_pid, consumer_name}) do
+    stream = stream_name(bucket_name)
+
+    :ok = Gnat.unsub(conn, sub_pid)
+    :ok = Consumer.delete(conn, stream, consumer_name)
+  end
+
+  defp receive_watched_keys(bucket_name, handler) do
+    receive do
+      {:msg, %{topic: key, body: body, headers: headers}} ->
+        key = subject_to_key(key, bucket_name)
+
+        if {"kv-operation", "DEL"} in headers do
+          handler.(:key_deleted, key, body)
+        end
+
+      {:msg, %{topic: key, body: body}} ->
+        handler.(:key_added, key, body)
+    end
+
+    receive_watched_keys(bucket_name, handler)
+  end
+
   defp receive_keys(keys \\ %{}, bucket_name) do
     receive do
       {:msg, %{topic: key, body: body, headers: headers}} ->
