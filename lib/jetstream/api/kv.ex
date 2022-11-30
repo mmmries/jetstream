@@ -190,7 +190,7 @@ defmodule Jetstream.API.KV do
 
   ## Examples
 
-      iex>{:ok, sub, consumer} = KV.watch(:gnat, "my_bucket", fn action, key, value -> IO.puts(action) end)
+      iex>{:ok, _watchres} = KV.watch(:gnat, "my_bucket", fn action, key, value -> IO.puts(action) end)
   """
   # @type watch_handler  (:key_added | :key_removed, String.t(), binary() -> nil)
   # @spec watch(conn :: Gnat.t(), bucket_name :: binary(), handler :: watch_handler()) :: {:ok, {pid(), String.t()}}
