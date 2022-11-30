@@ -238,6 +238,8 @@ defmodule Jetstream.API.KV do
         end
 
       {:msg, %{topic: key, body: body}} ->
+        key = subject_to_key(key, bucket_name)
+
         handler.(:key_added, key, body)
     end
 
