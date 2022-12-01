@@ -192,8 +192,9 @@ defmodule Jetstream.API.KV do
 
       iex>{:ok, _watchres} = KV.watch(:gnat, "my_bucket", fn action, key, value -> IO.puts(action) end)
   """
-  # @type watch_handler  (:key_added | :key_removed, String.t(), binary() -> nil)
-  # @spec watch(conn :: Gnat.t(), bucket_name :: binary(), handler :: watch_handler()) :: {:ok, {pid(), String.t()}}
+  @type watch_handler :: (:key_added | :key_removed, String.t(), binary() -> nil)
+  @spec watch(conn :: Gnat.t(), bucket_name :: binary(), handler :: watch_handler()) ::
+          {:ok, {pid(), String.t()}} | {:error, any}
   def watch(conn, bucket_name, handler) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
