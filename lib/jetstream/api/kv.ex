@@ -184,67 +184,30 @@ defmodule Jetstream.API.KV do
     end
   end
 
-  @doc """
-  Watches a bucket for addition and removal. You supply a handler that will receive add and
-  remove messages.
+  @doc ~S"""
+  Starts a monitor for key changes in a given bucket. Supply a handler that will receive
+  key change notifications.
 
   ## Examples
 
-      iex>{:ok, _watchres} = KV.watch(:gnat, "my_bucket", fn action, key, value -> IO.puts(action) end)
-  """
-  @type watch_handler :: (:key_added | :key_deleted, String.t(), binary() -> nil)
-  @spec watch(conn :: Gnat.t(), bucket_name :: binary(), handler :: watch_handler()) ::
-          {:ok, {pid(), String.t()}} | {:error, any}
-  def watch(conn, bucket_name, handler) do
-    stream = stream_name(bucket_name)
-    inbox = Util.reply_inbox()
-    consumer_name = "all_key_values_watcher_#{Util.nuid()}"
-
-    {:ok, int_handler} =
-      Task.start(fn ->
-        receive_watched_keys(bucket_name, handler)
+      iex>{:ok, _pid} = Jetstream.API.KV.watch(:gnat, "my_bucket", fn action, key, value ->
+        IO.puts("#{action} taken on #{key}")
       end)
-
-    with {:ok, sub} <- Gnat.sub(conn, int_handler, inbox),
-         {:ok, _consumer} <-
-           Consumer.create(conn, %Consumer{
-             durable_name: consumer_name,
-             deliver_subject: inbox,
-             stream_name: stream,
-             ack_policy: :none,
-             max_ack_pending: -1,
-             max_deliver: 1
-           }) do
-      {:ok, {sub, consumer_name}}
-    end
-  end
-
-  @doc """
-  Stops watching a given bucket. Supply the results of the watch function to stop it
   """
-  def unwatch(conn, bucket_name, {sub_pid, consumer_name}) do
-    stream = stream_name(bucket_name)
-
-    :ok = Gnat.unsub(conn, sub_pid)
-    :ok = Consumer.delete(conn, stream, consumer_name)
+  def watch(conn, bucket_name, handler) do
+    Jetstream.API.KV.Watcher.start_link(conn: conn, bucket_name: bucket_name, handler: handler)
   end
 
-  defp receive_watched_keys(bucket_name, handler) do
-    receive do
-      {:msg, %{topic: key, body: body, headers: headers}} ->
-        key = subject_to_key(key, bucket_name)
+  @doc ~S"""
+  Stops a previously running monitor. This will unsubscribe from the key changes and remove the
+  ephemeral consumer
 
-        if {"kv-operation", "DEL"} in headers do
-          handler.(:key_deleted, key, body)
-        end
+  ## Examples
 
-      {:msg, %{topic: key, body: body}} ->
-        key = subject_to_key(key, bucket_name)
-
-        handler.(:key_added, key, body)
-    end
-
-    receive_watched_keys(bucket_name, handler)
+      iex>:ok = Jetstream.API.KV.unwatch(pid)
+  """
+  def unwatch(pid) do
+    Jetstream.API.KV.Watcher.stop(pid)
   end
 
   defp receive_keys(keys \\ %{}, bucket_name) do
@@ -264,7 +227,8 @@ defmodule Jetstream.API.KV do
     end
   end
 
-  defp stream_name(bucket_name) do
+  @doc false
+  def stream_name(bucket_name) do
     "#{@stream_prefix}#{bucket_name}"
   end
 
@@ -276,7 +240,8 @@ defmodule Jetstream.API.KV do
     "#{@subject_prefix}#{bucket_name}.#{key}"
   end
 
-  defp subject_to_key(subject, bucket_name) do
+  @doc false
+  def subject_to_key(subject, bucket_name) do
     String.replace(subject, "#{@subject_prefix}#{bucket_name}.", "")
   end
 end

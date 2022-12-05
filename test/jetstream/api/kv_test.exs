@@ -76,7 +76,7 @@ defmodule Jetstream.API.KVTest do
     test "detects key added and removed keys", %{bucket: bucket} do
       test_pid = self()
 
-      {:ok, watch_result} =
+      {:ok, watcher_pid} =
         KV.watch(:gnat, bucket, fn action, key, value ->
           send(test_pid, {action, key, value})
         end)
@@ -91,7 +91,7 @@ defmodule Jetstream.API.KVTest do
       # key deletions don't carry the data removed
       assert_receive({:key_deleted, "baz", ""})
 
-      KV.unwatch(:gnat, bucket, watch_result)
+      KV.unwatch(watcher_pid)
 
       :ok = KV.delete_bucket(:gnat, bucket)
     end
