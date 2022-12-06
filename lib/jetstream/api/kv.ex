@@ -184,6 +184,32 @@ defmodule Jetstream.API.KV do
     end
   end
 
+  @doc ~S"""
+  Starts a monitor for key changes in a given bucket. Supply a handler that will receive
+  key change notifications.
+
+  ## Examples
+
+      iex>{:ok, _pid} = Jetstream.API.KV.watch(:gnat, "my_bucket", fn action, key, value ->
+        IO.puts("#{action} taken on #{key}")
+      end)
+  """
+  def watch(conn, bucket_name, handler) do
+    Jetstream.API.KV.Watcher.start_link(conn: conn, bucket_name: bucket_name, handler: handler)
+  end
+
+  @doc ~S"""
+  Stops a previously running monitor. This will unsubscribe from the key changes and remove the
+  ephemeral consumer
+
+  ## Examples
+
+      iex>:ok = Jetstream.API.KV.unwatch(pid)
+  """
+  def unwatch(pid) do
+    Jetstream.API.KV.Watcher.stop(pid)
+  end
+
   defp receive_keys(keys \\ %{}, bucket_name) do
     receive do
       {:msg, %{topic: key, body: body, headers: headers}} ->
@@ -201,7 +227,8 @@ defmodule Jetstream.API.KV do
     end
   end
 
-  defp stream_name(bucket_name) do
+  @doc false
+  def stream_name(bucket_name) do
     "#{@stream_prefix}#{bucket_name}"
   end
 
@@ -213,7 +240,8 @@ defmodule Jetstream.API.KV do
     "#{@subject_prefix}#{bucket_name}.#{key}"
   end
 
-  defp subject_to_key(subject, bucket_name) do
+  @doc false
+  def subject_to_key(subject, bucket_name) do
     String.replace(subject, "#{@subject_prefix}#{bucket_name}.", "")
   end
 end
