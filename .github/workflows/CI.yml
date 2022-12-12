@@ -16,11 +16,11 @@ jobs:
     strategy:
       matrix:
         pair:
-          - otp: "23"
-            elixir: "1.10"
+          - otp: "24.3.4"
+            elixir: "1.12"
             nats: "2.2.0"
 
-          - otp: "24"
+          - otp: "24.3.4"
             elixir: "main"
             nats: "latest"
 
