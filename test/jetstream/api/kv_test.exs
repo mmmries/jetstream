@@ -74,6 +74,10 @@ defmodule Jetstream.API.KVTest do
     assert :ok = KV.delete_bucket(:gnat, "KEY_PUT_TEST")
   end
 
+  test "put_value/4 returns error" do
+    assert {:error, :timeout} = KV.put_value(:gnat, "KEY_PUT_TEST", "foo", "baz", timeout: 1)
+  end
+
   describe "watch/3" do
     setup do
       bucket = "KEY_WATCH_TEST"
