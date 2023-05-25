@@ -109,13 +109,16 @@ defmodule Jetstream.API.KV do
 
       iex>:ok = Jetstream.API.KV.delete_key(:gnat, "my_bucket", "my_key")
   """
-  @spec delete_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) :: :ok | {:error, any()}
+  @spec delete_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) ::
+          :ok | {:error, any()}
   def delete_key(conn, bucket_name, key, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, 5_000)
 
-    reply = Gnat.request(conn, key_name(bucket_name, key), "",
-      headers: [{"KV-Operation", "DEL"}], receive_timeout: timeout
-    )
+    reply =
+      Gnat.request(conn, key_name(bucket_name, key), "",
+        headers: [{"KV-Operation", "DEL"}],
+        receive_timeout: timeout
+      )
 
     case reply do
       {:ok, _} -> :ok
@@ -130,13 +133,16 @@ defmodule Jetstream.API.KV do
 
       iex>:ok = Jetstream.API.KV.purge_key(:gnat, "my_bucket", "my_key")
   """
-  @spec purge_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) :: :ok | {:error, any()}
+  @spec purge_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary()) ::
+          :ok | {:error, any()}
   def purge_key(conn, bucket_name, key, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, 5_000)
 
-    reply = Gnat.request(conn, key_name(bucket_name, key), "",
-      headers: [{"KV-Operation", "PURGE"}, {"Nats-Rollup", "sub"}], receive_timeout: timeout
-    )
+    reply =
+      Gnat.request(conn, key_name(bucket_name, key), "",
+        headers: [{"KV-Operation", "PURGE"}, {"Nats-Rollup", "sub"}],
+        receive_timeout: timeout
+      )
 
     case reply do
       {:ok, _} -> :ok
