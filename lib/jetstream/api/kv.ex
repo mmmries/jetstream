@@ -90,9 +90,16 @@ defmodule Jetstream.API.KV do
       iex>:ok = Jetstream.API.KV.create_key(:gnat, "my_bucket", "my_key", "my_value")
   """
   @spec create_key(conn :: Gnat.t(), bucket_name :: binary(), key :: binary(), value :: binary()) ::
-          :ok
-  def create_key(conn, bucket_name, key, value) do
-    Gnat.pub(conn, key_name(bucket_name, key), value)
+          :ok | {:error, any()}
+  def create_key(conn, bucket_name, key, value, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, 5_000)
+
+    reply = Gnat.request(conn, key_name(bucket_name, key), value, receive_timeout: timeout)
+
+    case reply do
+      {:ok, _} -> :ok
+      error -> error
+    end
   end
 
   @doc """

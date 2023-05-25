@@ -42,6 +42,10 @@ defmodule Jetstream.API.KVTest do
     assert :ok = KV.delete_bucket(:gnat, "KEY_CREATE_TEST")
   end
 
+  test "create_key/4 returns error" do
+    assert {:error, :timeout} = KV.create_key(:gnat, "KEY_CREATE_TEST", "foo", "bar", timeout: 1)
+  end
+
   test "delete_key/3 deletes a key" do
     assert {:ok, _} = KV.create_bucket(:gnat, "KEY_DELETE_TEST")
     assert :ok = KV.create_key(:gnat, "KEY_DELETE_TEST", "foo", "bar")
