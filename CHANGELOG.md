@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.7
+
+* Makes `KV.put_value`, `KV.create_key`, `KV.delete_key`, and `KV.purge_key` synchronous
+
 ## 0.0.6
 
 * Adds KV watcher https://github.com/mmmries/jetstream/pull/72

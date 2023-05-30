@@ -270,7 +270,10 @@ defmodule Jetstream.API.ConsumerTest do
       consumer_name: consumer_name,
       reply_subject: reply_subject
     } do
-      for i <- 1..9, do: Gnat.pub(:gnat, subject, "message #{i}")
+      for i <- 1..9 do
+        # Using `request` to make sure messages get in the stream before we move on to consume them
+        assert {:ok, _} = Gnat.request(:gnat, subject, "message #{i}")
+      end
 
       Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject,
         batch: 10,
@@ -280,10 +283,10 @@ defmodule Jetstream.API.ConsumerTest do
       for i <- 1..9 do
         expected_body = "message #{i}"
 
-        assert_receive {:msg, %{body: ^expected_body, topic: ^subject}}
+        assert_receive {:msg, %{body: ^expected_body, topic: ^subject}}, 2_000
       end
 
-      assert_receive {:msg, %{body: "", topic: ^reply_subject}}
+      assert_receive {:msg, %{body: "", topic: ^reply_subject}}, 2_000
 
       Gnat.pub(:gnat, subject, "message 10")
 

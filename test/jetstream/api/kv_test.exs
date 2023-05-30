@@ -42,20 +42,32 @@ defmodule Jetstream.API.KVTest do
     assert :ok = KV.delete_bucket(:gnat, "KEY_CREATE_TEST")
   end
 
+  test "create_key/4 returns error" do
+    assert {:error, :timeout} = KV.create_key(:gnat, "KEY_CREATE_TEST", "foo", "bar", timeout: 1)
+  end
+
   test "delete_key/3 deletes a key" do
     assert {:ok, _} = KV.create_bucket(:gnat, "KEY_DELETE_TEST")
     assert :ok = KV.create_key(:gnat, "KEY_DELETE_TEST", "foo", "bar")
     assert :ok = KV.delete_key(:gnat, "KEY_DELETE_TEST", "foo")
-    refute KV.get_value(:gnat, "KEY_DELETE_TEST", "foo")
+    assert KV.get_value(:gnat, "KEY_DELETE_TEST", "foo") == nil
     assert :ok = KV.delete_bucket(:gnat, "KEY_DELETE_TEST")
+  end
+
+  test "delete_key/3 returns error" do
+    assert {:error, :timeout} = KV.delete_key(:gnat, "KEY_DELETE_TEST", "foo", timeout: 1)
   end
 
   test "purge_key/3 purges a key" do
     assert {:ok, _} = KV.create_bucket(:gnat, "KEY_PURGE_TEST")
     assert :ok = KV.create_key(:gnat, "KEY_PURGE_TEST", "foo", "bar")
     assert :ok = KV.purge_key(:gnat, "KEY_PURGE_TEST", "foo")
-    refute KV.get_value(:gnat, "KEY_PURGE_TEST", "foo")
+    assert KV.get_value(:gnat, "KEY_PURGE_TEST", "foo") == nil
     assert :ok = KV.delete_bucket(:gnat, "KEY_PURGE_TEST")
+  end
+
+  test "purge_key/3 returns error" do
+    assert {:error, :timeout} = KV.purge_key(:gnat, "KEY_PURGE_TEST", "foo", timeout: 1)
   end
 
   test "put_value/4 updates a key" do
@@ -64,6 +76,10 @@ defmodule Jetstream.API.KVTest do
     assert :ok = KV.put_value(:gnat, "KEY_PUT_TEST", "foo", "baz")
     assert "baz" = KV.get_value(:gnat, "KEY_PUT_TEST", "foo")
     assert :ok = KV.delete_bucket(:gnat, "KEY_PUT_TEST")
+  end
+
+  test "put_value/4 returns error" do
+    assert {:error, :timeout} = KV.put_value(:gnat, "KEY_PUT_TEST", "foo", "baz", timeout: 1)
   end
 
   describe "watch/3" do
