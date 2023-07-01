@@ -27,4 +27,22 @@ defmodule Jetstream.API.ObjectTest do
       assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "(*!&@($%*&))")
     end
   end
+
+  describe "put_object/4" do
+    test "put_object/4 creates an object" do
+      readme_path = Path.join([Path.dirname(__DIR__), "..", "..", "README.md"])
+      {:ok, bytes} = File.read(readme_path)
+      sha = :crypto.hash(:sha256, bytes)
+      assert {:ok, io} = File.open(readme_path, [:read])
+
+      assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "MY-STORE")
+      assert {:ok, object_meta} = Object.put_object(:gnat, "MY-STORE", "README.md", io)
+      assert object_meta.name == "README.md"
+      assert object_meta.bucket == "MY-STORE"
+      assert object_meta.chunks == 1
+      assert "SHA-256=" <> encoded = object_meta.digest
+      assert Base.decode64!(encoded) == sha
+      assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
+    end
+  end
 end
