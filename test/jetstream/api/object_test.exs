@@ -20,5 +20,11 @@ defmodule Jetstream.API.ObjectTest do
 
       assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
     end
+
+    test "bucket names are validated" do
+      assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "")
+      assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "MY.STORE")
+      assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "(*!&@($%*&))")
+    end
   end
 end

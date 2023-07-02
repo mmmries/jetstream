@@ -10,24 +10,26 @@ defmodule Jetstream.API.Object do
   @subject_prefix "$O."
 
   def create_bucket(conn, bucket_name, params \\ []) do
-    stream = %Stream{
-      name: stream_name(bucket_name),
-      subjects: stream_subjects(bucket_name),
-      description: Keyword.get(params, :description),
-      max_msgs_per_subject: Keyword.get(params, :history, 1),
-      discard: :new,
-      deny_delete: true,
-      allow_rollup_hdrs: true,
-      max_age: Keyword.get(params, :ttl, 0),
-      max_bytes: Keyword.get(params, :max_bucket_size, -1),
-      max_msg_size: Keyword.get(params, :max_value_size, -1),
-      num_replicas: Keyword.get(params, :replicas, 1),
-      storage: Keyword.get(params, :storage, :file),
-      placement: Keyword.get(params, :placement),
-      duplicate_window: adjust_duplicate_window(Keyword.get(params, :ttl, 0))
-    }
+    with :ok <- validate_bucket_name(bucket_name) do
+      stream = %Stream{
+        name: stream_name(bucket_name),
+        subjects: stream_subjects(bucket_name),
+        description: Keyword.get(params, :description),
+        max_msgs_per_subject: Keyword.get(params, :history, 1),
+        discard: :new,
+        deny_delete: true,
+        allow_rollup_hdrs: true,
+        max_age: Keyword.get(params, :ttl, 0),
+        max_bytes: Keyword.get(params, :max_bucket_size, -1),
+        max_msg_size: Keyword.get(params, :max_value_size, -1),
+        num_replicas: Keyword.get(params, :replicas, 1),
+        storage: Keyword.get(params, :storage, :file),
+        placement: Keyword.get(params, :placement),
+        duplicate_window: adjust_duplicate_window(Keyword.get(params, :ttl, 0))
+      }
 
-    Stream.create(conn, stream)
+      Stream.create(conn, stream)
+    end
   end
 
   def delete_bucket(conn, bucket_name) do
@@ -58,4 +60,11 @@ defmodule Jetstream.API.Object do
   # is 2 minutes. We'll keep the 2 minute window UNLESS the ttl is less than 2 minutes
   defp adjust_duplicate_window(ttl) when ttl > 0 and ttl < @two_minutes_in_nanoseconds, do: ttl
   defp adjust_duplicate_window(_ttl), do: @two_minutes_in_nanoseconds
+
+  defp validate_bucket_name(name) do
+    case Regex.match?(~r/^[a-zA-Z0-9_-]+$/, name) do
+      true -> :ok
+      false -> {:error, "invalid bucket name"}
+    end
+  end
 end
