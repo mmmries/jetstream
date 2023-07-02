@@ -129,14 +129,13 @@ defmodule Jetstream.API.Object do
           error ->
             error
         end
-      end
     end
+  end
 
-    defp validate_bucket_name(name) do
-      case Regex.match?(~r/^[a-zA-Z0-9_-]+$/, name) do
-        true -> :ok
-        false -> {:error, "invalid bucket name"}
-      end
+  defp validate_bucket_name(name) do
+    case Regex.match?(~r/^[a-zA-Z0-9_-]+$/, name) do
+      true -> :ok
+      false -> {:error, "invalid bucket name"}
     end
   end
 end

@@ -3,6 +3,7 @@ defmodule Jetstream.API.ObjectTest do
   alias Jetstream.API.Object
 
   @moduletag with_gnat: :gnat
+  @readme_path Path.join([Path.dirname(__DIR__), "..", "..", "README.md"])
 
   describe "create_bucket/3" do
     test "create/delete a bucket" do
@@ -29,11 +30,10 @@ defmodule Jetstream.API.ObjectTest do
   end
 
   describe "put_object/4" do
-    test "put_object/4 creates an object" do
-      readme_path = Path.join([Path.dirname(__DIR__), "..", "..", "README.md"])
-      {:ok, bytes} = File.read(readme_path)
+    test "creates an object" do
+      {:ok, bytes} = File.read(@readme_path)
       sha = :crypto.hash(:sha256, bytes)
-      assert {:ok, io} = File.open(readme_path, [:read])
+      assert {:ok, io} = File.open(@readme_path, [:read])
 
       assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "MY-STORE")
       assert {:ok, object_meta} = Object.put_object(:gnat, "MY-STORE", "README.md", io)
@@ -43,6 +43,12 @@ defmodule Jetstream.API.ObjectTest do
       assert "SHA-256=" <> encoded = object_meta.digest
       assert Base.decode64!(encoded) == sha
       assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
+    end
+
+    test "return an error if the object store doesn't exist" do
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:error, err} = Object.put_object(:gnat, "I_DONT_EXIST", "foo", io)
+      assert %{"code" => 404, "description" => "stream not found"} = err
     end
   end
 end
