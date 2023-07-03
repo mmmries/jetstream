@@ -29,6 +29,36 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
+  describe "delete_bucket/2" do
+    test "create/delete a bucket" do
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, "MY-STORE")
+      assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
+    end
+  end
+
+  describe "list_objects/3" do
+    test "list an empty bucket" do
+      nuid = Jetstream.API.Util.nuid()
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, nuid)
+      assert {:ok, []} = Object.list_objects(:gnat, nuid)
+    end
+
+    test "list a bucket with two files" do
+      nuid = Jetstream.API.Util.nuid()
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, nuid)
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:ok, _object} = Object.put_object(:gnat, nuid, "README.md", io)
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:ok, _object} = Object.put_object(:gnat, nuid, "SOMETHING.md", io)
+
+      assert {:ok, objects} = Object.list_objects(:gnat, nuid)
+      [readme, something] = Enum.sort_by(objects, & &1.name)
+      assert readme.name == "README.md"
+      assert readme.size == something.size
+      assert readme.digest == something.digest
+    end
+  end
+
   describe "put_object/4" do
     test "creates an object" do
       {:ok, bytes} = File.read(@readme_path)
