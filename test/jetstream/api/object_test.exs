@@ -1,6 +1,7 @@
 defmodule Jetstream.API.ObjectTest do
   use Jetstream.ConnCase, min_server_version: "2.6.2"
   alias Jetstream.API.Object
+  import Jetstream.API.Util, only: [nuid: 0]
 
   @moduletag with_gnat: :gnat
   @readme_path Path.join([Path.dirname(__DIR__), "..", "..", "README.md"])
@@ -26,6 +27,49 @@ defmodule Jetstream.API.ObjectTest do
       assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "")
       assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "MY.STORE")
       assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "(*!&@($%*&))")
+    end
+  end
+
+  describe "delete_bucket/2" do
+    test "create/delete a bucket" do
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, "MY-STORE")
+      assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
+    end
+  end
+
+  describe "list_objects/3" do
+    test "list an empty bucket" do
+      bucket = nuid()
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
+      assert {:ok, []} = Object.list_objects(:gnat, bucket)
+    end
+
+    test "list a bucket with two files" do
+      bucket = nuid()
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:ok, _object} = Object.put_object(:gnat, bucket, "README.md", io)
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:ok, _object} = Object.put_object(:gnat, bucket, "SOMETHING.md", io)
+
+      assert {:ok, objects} = Object.list_objects(:gnat, bucket)
+      [readme, something] = Enum.sort_by(objects, & &1.name)
+      assert readme.name == "README.md"
+      assert readme.size == something.size
+      assert readme.digest == something.digest
+    end
+  end
+
+  describe "info/3" do
+    test "lookup meta information about an object" do
+      assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "INF")
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:ok, initial_meta} = Object.put_object(:gnat, "INF", "README.md", io)
+
+      assert {:ok, lookup_meta} = Object.info(:gnat, "INF", "README.md")
+      assert lookup_meta == initial_meta
+
+      assert :ok = Object.delete_bucket(:gnat, "INF")
     end
   end
 

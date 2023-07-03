@@ -4,7 +4,8 @@ defmodule Jetstream.API.Object do
 
   Learn more about Object Store: https://docs.nats.io/nats-concepts/jetstream/obj_store
   """
-  alias Jetstream.API.{Stream, Util}
+  alias Jetstream.API.{Consumer, Stream, Util}
+  alias Jetstream.API.Object.Meta
 
   @stream_prefix "OBJ_"
   @subject_prefix "$O."
@@ -36,6 +37,45 @@ defmodule Jetstream.API.Object do
     Stream.delete(conn, stream_name(bucket_name))
   end
 
+  def list_objects(conn, bucket_name) do
+    with {:ok, %{config: stream}} <- Stream.info(conn, stream_name(bucket_name)),
+         topic <- Util.reply_inbox(),
+         {:ok, sub} <- Gnat.sub(conn, self(), topic),
+         {:ok, consumer} <-
+           Consumer.create(conn, %Consumer{
+             stream_name: stream.name,
+             deliver_subject: topic,
+             deliver_policy: :last_per_subject,
+             filter_subject: meta_stream_subject(bucket_name),
+             ack_policy: :none,
+             max_ack_pending: nil,
+             replay_policy: :instant,
+             max_deliver: 1
+           }),
+         {:ok, messages} <- receive_all_metas(sub, consumer.num_pending) do
+      :ok = Gnat.unsub(conn, sub)
+      :ok = Consumer.delete(conn, stream.name, consumer.name)
+
+      {:ok, messages}
+    end
+  end
+
+  def info(conn, bucket_name, object_name) do
+    with {:ok, _stream_info} <- Stream.info(conn, stream_name(bucket_name)) do
+      Stream.get_message(conn, stream_name(bucket_name), %{
+        last_by_subj: meta_stream_topic(bucket_name, object_name)
+      })
+      |> case do
+        {:ok, message} ->
+          meta = json_to_meta(message.data)
+          {:ok, meta}
+
+        error ->
+          error
+      end
+    end
+  end
+
   @spec put_object(Gnat.t(), String.t(), String.t(), File.io_device()) ::
           {:ok, map()} | {:error, any()}
   def put_object(conn, bucket_name, object_name, io) do
@@ -44,7 +84,7 @@ defmodule Jetstream.API.Object do
 
     with {:ok, %{config: _stream}} <- Stream.info(conn, stream_name(bucket_name)),
          {:ok, chunks, size, digest} <- send_chunks(conn, io, chunk_topic) do
-      object_meta = %{
+      object_meta = %Meta{
         name: object_name,
         bucket: bucket_name,
         nuid: nuid,
@@ -99,6 +139,43 @@ defmodule Jetstream.API.Object do
   # is 2 minutes. We'll keep the 2 minute window UNLESS the ttl is less than 2 minutes
   defp adjust_duplicate_window(ttl) when ttl > 0 and ttl < @two_minutes_in_nanoseconds, do: ttl
   defp adjust_duplicate_window(_ttl), do: @two_minutes_in_nanoseconds
+
+  defp json_to_meta(json) do
+    %{
+      "bucket" => bucket,
+      "chunks" => chunks,
+      "digest" => digest,
+      "name" => name,
+      "nuid" => nuid,
+      "size" => size
+    } = Jason.decode!(json)
+
+    %Meta{
+      bucket: bucket,
+      chunks: chunks,
+      digest: digest,
+      name: name,
+      nuid: nuid,
+      size: size
+    }
+  end
+
+  defp receive_all_metas(sid, num_pending, messages \\ [])
+
+  defp receive_all_metas(_sid, 0, messages) do
+    {:ok, messages}
+  end
+
+  defp receive_all_metas(sid, remaining, messages) do
+    receive do
+      {:msg, %{sid: ^sid, body: body}} ->
+        meta = json_to_meta(body)
+        receive_all_metas(sid, remaining - 1, [meta | messages])
+    after
+      10_000 ->
+        {:error, :timeout_waiting_for_messages}
+    end
+  end
 
   @chunk_size 128 * 1024
   defp send_chunks(conn, io, topic) do
