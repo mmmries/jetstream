@@ -37,6 +37,32 @@ defmodule Jetstream.API.Object do
     Stream.delete(conn, stream_name(bucket_name))
   end
 
+  def get_object(conn, bucket_name, object_name, chunk_fun) do
+    with {:ok, %{config: _stream}} <- Stream.info(conn, stream_name(bucket_name)),
+         {:ok, meta} <- get_object_meta(conn, bucket_name, object_name) do
+      chunk_topic = chunk_stream_topic(bucket_name, meta.nuid)
+      Stream.subscribe(conn, chunk_topic, durable_name: "get_object", start_position: :first)
+
+      receive_chunks(conn, chunk_topic, chunk_fun)
+    end
+  end
+
+  def info(conn, bucket_name, object_name) do
+    with {:ok, _stream_info} <- Stream.info(conn, stream_name(bucket_name)) do
+      Stream.get_message(conn, stream_name(bucket_name), %{
+        last_by_subj: meta_stream_topic(bucket_name, object_name)
+      })
+      |> case do
+        {:ok, message} ->
+          meta = json_to_meta(message.data)
+          {:ok, meta}
+
+        error ->
+          error
+      end
+    end
+  end
+
   def list_objects(conn, bucket_name) do
     with {:ok, %{config: stream}} <- Stream.info(conn, stream_name(bucket_name)),
          topic <- Util.reply_inbox(),
@@ -57,22 +83,6 @@ defmodule Jetstream.API.Object do
       :ok = Consumer.delete(conn, stream.name, consumer.name)
 
       {:ok, messages}
-    end
-  end
-
-  def info(conn, bucket_name, object_name) do
-    with {:ok, _stream_info} <- Stream.info(conn, stream_name(bucket_name)) do
-      Stream.get_message(conn, stream_name(bucket_name), %{
-        last_by_subj: meta_stream_topic(bucket_name, object_name)
-      })
-      |> case do
-        {:ok, message} ->
-          meta = json_to_meta(message.data)
-          {:ok, meta}
-
-        error ->
-          error
-      end
     end
   end
 
