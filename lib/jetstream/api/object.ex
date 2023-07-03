@@ -60,6 +60,22 @@ defmodule Jetstream.API.Object do
     end
   end
 
+
+  def info(conn, bucket_name, object_name) do
+    with {:ok, _stream_info} <- Stream.info(conn, stream_name(bucket_name)) do
+      Stream.get_message(conn, stream_name(bucket_name), %{
+        last_by_subj: meta_stream_topic(bucket_name, object_name)
+      })
+      |> case do
+        {:ok, message} ->
+          {:ok, message}
+
+        error ->
+          error
+      end
+    end
+  end
+
   @spec put_object(Gnat.t(), String.t(), String.t(), File.io_device()) ::
           {:ok, map()} | {:error, any()}
   def put_object(conn, bucket_name, object_name, io) do

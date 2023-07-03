@@ -59,6 +59,19 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
+  describe "info/3" do
+    test "lookup meta information about an object" do
+      assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "INF")
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:ok, initial_meta} = Object.put_object(:gnat, "INF", "README.md", io)
+
+      assert {:ok, lookup_meta} = Object.info(:gnat, "INF", "README.md")
+      assert lookup_meta == initial_meta
+
+      assert :ok = Object.delete_bucket(:gnat, "INF")
+    end
+  end
+
   describe "put_object/4" do
     test "creates an object" do
       {:ok, bytes} = File.read(@readme_path)
