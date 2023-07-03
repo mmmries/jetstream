@@ -1,6 +1,7 @@
 defmodule Jetstream.API.ObjectTest do
   use Jetstream.ConnCase, min_server_version: "2.6.2"
   alias Jetstream.API.Object
+  import Jetstream.API.Util, only: [nuid: 0]
 
   @moduletag with_gnat: :gnat
   @readme_path Path.join([Path.dirname(__DIR__), "..", "..", "README.md"])
@@ -38,20 +39,20 @@ defmodule Jetstream.API.ObjectTest do
 
   describe "list_objects/3" do
     test "list an empty bucket" do
-      nuid = Jetstream.API.Util.nuid()
-      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, nuid)
-      assert {:ok, []} = Object.list_objects(:gnat, nuid)
+      bucket = nuid()
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
+      assert {:ok, []} = Object.list_objects(:gnat, bucket)
     end
 
     test "list a bucket with two files" do
-      nuid = Jetstream.API.Util.nuid()
-      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, nuid)
+      bucket = nuid()
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
       assert {:ok, io} = File.open(@readme_path, [:read])
-      assert {:ok, _object} = Object.put_object(:gnat, nuid, "README.md", io)
+      assert {:ok, _object} = Object.put_object(:gnat, bucket, "README.md", io)
       assert {:ok, io} = File.open(@readme_path, [:read])
-      assert {:ok, _object} = Object.put_object(:gnat, nuid, "SOMETHING.md", io)
+      assert {:ok, _object} = Object.put_object(:gnat, bucket, "SOMETHING.md", io)
 
-      assert {:ok, objects} = Object.list_objects(:gnat, nuid)
+      assert {:ok, objects} = Object.list_objects(:gnat, bucket)
       [readme, something] = Enum.sort_by(objects, & &1.name)
       assert readme.name == "README.md"
       assert readme.size == something.size

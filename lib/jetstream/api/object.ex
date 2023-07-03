@@ -60,7 +60,6 @@ defmodule Jetstream.API.Object do
     end
   end
 
-
   def info(conn, bucket_name, object_name) do
     with {:ok, _stream_info} <- Stream.info(conn, stream_name(bucket_name)) do
       Stream.get_message(conn, stream_name(bucket_name), %{
@@ -68,7 +67,8 @@ defmodule Jetstream.API.Object do
       })
       |> case do
         {:ok, message} ->
-          {:ok, message}
+          meta = json_to_meta(message.data)
+          {:ok, meta}
 
         error ->
           error
@@ -84,7 +84,7 @@ defmodule Jetstream.API.Object do
 
     with {:ok, %{config: _stream}} <- Stream.info(conn, stream_name(bucket_name)),
          {:ok, chunks, size, digest} <- send_chunks(conn, io, chunk_topic) do
-      object_meta = %{
+      object_meta = %Meta{
         name: object_name,
         bucket: bucket_name,
         nuid: nuid,
@@ -140,6 +140,26 @@ defmodule Jetstream.API.Object do
   defp adjust_duplicate_window(ttl) when ttl > 0 and ttl < @two_minutes_in_nanoseconds, do: ttl
   defp adjust_duplicate_window(_ttl), do: @two_minutes_in_nanoseconds
 
+  defp json_to_meta(json) do
+    %{
+      "bucket" => bucket,
+      "chunks" => chunks,
+      "digest" => digest,
+      "name" => name,
+      "nuid" => nuid,
+      "size" => size
+    } = Jason.decode!(json)
+
+    %Meta{
+      bucket: bucket,
+      chunks: chunks,
+      digest: digest,
+      name: name,
+      nuid: nuid,
+      size: size
+    }
+  end
+
   defp receive_all_metas(sid, num_pending, messages \\ [])
 
   defp receive_all_metas(_sid, 0, messages) do
@@ -149,17 +169,7 @@ defmodule Jetstream.API.Object do
   defp receive_all_metas(sid, remaining, messages) do
     receive do
       {:msg, %{sid: ^sid, body: body}} ->
-        parsed = Jason.decode!(body)
-
-        meta = %Meta{
-          bucket: parsed["bucket"],
-          chunks: parsed["chunks"],
-          digest: parsed["digest"],
-          name: parsed["name"],
-          nuid: parsed["nuid"],
-          size: parsed["size"]
-        }
-
+        meta = json_to_meta(body)
         receive_all_metas(sid, remaining - 1, [meta | messages])
     after
       10_000 ->
