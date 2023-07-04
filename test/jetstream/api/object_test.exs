@@ -101,7 +101,7 @@ defmodule Jetstream.API.ObjectTest do
       assert object_meta.bucket == "MY-STORE"
       assert object_meta.chunks == 1
       assert "SHA-256=" <> encoded = object_meta.digest
-      assert Base.decode64!(encoded) == expected_sha
+      assert Base.url_decode64!(encoded) == expected_sha
 
       assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
     end
@@ -109,6 +109,52 @@ defmodule Jetstream.API.ObjectTest do
     test "return an error if the object store doesn't exist" do
       assert {:error, err} = put_filepath(@readme_path, "I_DONT_EXIST", "foo")
       assert %{"code" => 404, "description" => "stream not found"} = err
+    end
+  end
+
+  test "storing and retrieving larger files" do
+    assert {:ok, path, sha} = generate_big_file()
+    bucket = nuid()
+    assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, bucket)
+    assert {:ok, meta} = put_filepath(path, bucket, "big")
+    assert meta.chunks == 16
+    assert meta.size == 16 * 128 * 1024
+    assert "SHA-256=" <> encoded = meta.digest
+    assert Base.url_decode64!(encoded) == sha
+
+    Process.put(:buffer, "")
+
+    Object.get_object(:gnat, bucket, "big", fn chunk ->
+      Process.put(:buffer, Process.get(:buffer) <> chunk)
+    end)
+
+    file_contents = Process.get(:buffer)
+
+    assert byte_size(file_contents) == meta.size
+    assert :crypto.hash(:sha256, file_contents) == sha
+    assert :ok = Object.delete_bucket(:gnat, bucket)
+  end
+
+  # create a random 2MB binary file
+  # re-use it on subsequent test runs if it already exists
+  defp generate_big_file do
+    filepath = Path.join("tmp", "big_file.bin")
+
+    if File.exists?(filepath) do
+      content = File.read!(filepath)
+      sha = :crypto.hash(:sha256, content)
+      {:ok, filepath, sha}
+    else
+      {:ok, _} =
+        File.open(filepath, [:write], fn fh ->
+          Enum.each(1..16, fn _ ->
+            rand_chunk = :crypto.strong_rand_bytes(128) |> String.duplicate(1024)
+
+            :ok = IO.binwrite(fh, rand_chunk)
+          end)
+        end)
+
+      generate_big_file()
     end
   end
 

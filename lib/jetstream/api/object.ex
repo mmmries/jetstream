@@ -16,9 +16,7 @@ defmodule Jetstream.API.Object do
         name: stream_name(bucket_name),
         subjects: stream_subjects(bucket_name),
         description: Keyword.get(params, :description),
-        max_msgs_per_subject: Keyword.get(params, :history, 1),
         discard: :new,
-        deny_delete: true,
         allow_rollup_hdrs: true,
         max_age: Keyword.get(params, :ttl, 0),
         max_bytes: Keyword.get(params, :max_bucket_size, -1),
@@ -39,11 +37,8 @@ defmodule Jetstream.API.Object do
 
   def get_object(conn, bucket_name, object_name, chunk_fun) do
     with {:ok, %{config: _stream}} <- Stream.info(conn, stream_name(bucket_name)),
-         {:ok, meta} <- get_object_meta(conn, bucket_name, object_name) do
-      chunk_topic = chunk_stream_topic(bucket_name, meta.nuid)
-      Stream.subscribe(conn, chunk_topic, durable_name: "get_object", start_position: :first)
-
-      receive_chunks(conn, chunk_topic, chunk_fun)
+         {:ok, meta} <- info(conn, bucket_name, object_name) do
+      receive_chunks(conn, meta, chunk_fun)
     end
   end
 
@@ -100,7 +95,7 @@ defmodule Jetstream.API.Object do
         nuid: nuid,
         size: size,
         chunks: chunks,
-        digest: "SHA-256=#{Base.encode64(digest)}"
+        digest: "SHA-256=#{Base.url_encode64(digest)}"
       }
 
       topic = meta_stream_topic(bucket_name, object_name)
@@ -135,12 +130,16 @@ defmodule Jetstream.API.Object do
     "#{@subject_prefix}#{bucket_name}.C.#{nuid}"
   end
 
+  defp chunk_stream_topic(%Meta{bucket: bucket, nuid: nuid}) do
+    "#{@subject_prefix}#{bucket}.C.#{nuid}"
+  end
+
   defp meta_stream_subject(bucket_name) do
     "#{@subject_prefix}#{bucket_name}.M.>"
   end
 
   defp meta_stream_topic(bucket_name, object_name) do
-    key = Base.encode64(object_name)
+    key = Base.url_encode64(object_name)
     "#{@subject_prefix}#{bucket_name}.M.#{key}"
   end
 
@@ -181,6 +180,45 @@ defmodule Jetstream.API.Object do
       {:msg, %{sid: ^sid, body: body}} ->
         meta = json_to_meta(body)
         receive_all_metas(sid, remaining - 1, [meta | messages])
+    after
+      10_000 ->
+        {:error, :timeout_waiting_for_messages}
+    end
+  end
+
+  defp receive_chunks(conn, %Meta{} = meta, chunk_fun) do
+    topic = chunk_stream_topic(meta)
+    stream = stream_name(meta.bucket)
+    inbox = Util.reply_inbox()
+    {:ok, sub} = Gnat.sub(conn, self(), inbox)
+
+    {:ok, consumer} =
+      Consumer.create(conn, %Consumer{
+        stream_name: stream,
+        deliver_subject: inbox,
+        deliver_policy: :all,
+        filter_subject: topic,
+        ack_policy: :none,
+        max_ack_pending: nil,
+        replay_policy: :instant,
+        max_deliver: 1
+      })
+
+    :ok = receive_chunks(sub, meta.chunks, chunk_fun)
+
+    :ok = Gnat.unsub(conn, sub)
+    :ok = Consumer.delete(conn, stream, consumer.name)
+  end
+
+  defp receive_chunks(_sub, 0, _chunk_fun) do
+    :ok
+  end
+
+  defp receive_chunks(sub, remaining, chunk_fun) do
+    receive do
+      {:msg, %{sid: ^sub, body: body}} ->
+        chunk_fun.(body)
+        receive_chunks(sub, remaining - 1, chunk_fun)
     after
       10_000 ->
         {:error, :timeout_waiting_for_messages}
