@@ -1,6 +1,6 @@
 defmodule Jetstream.API.ObjectTest do
   use Jetstream.ConnCase, min_server_version: "2.6.2"
-  alias Jetstream.API.Object
+  alias Jetstream.API.{Object, Stream}
   import Jetstream.API.Util, only: [nuid: 0]
 
   @moduletag with_gnat: :gnat
@@ -37,6 +37,25 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
+  describe "delete_object/3" do
+    test "delete an object" do
+      bucket = nuid()
+      assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
+      {:ok, _} = put_filepath(@readme_path, bucket, "README.md")
+      {:ok, _} = put_filepath(@readme_path, bucket, "OTHER.md")
+      assert :ok = Object.delete_object(:gnat, bucket, "README.md")
+
+      assert {:ok, objects} = Object.list_objects(:gnat, bucket)
+      assert Enum.count(objects) == 1
+      assert Enum.map(objects, & &1.name) == ["OTHER.md"]
+      assert {:ok, objects} = Object.list_objects(:gnat, bucket, show_deleted: true)
+      assert Enum.count(objects) == 2
+      assert Enum.map(objects, & &1.name) |> Enum.sort() == ["OTHER.md", "README.md"]
+
+      assert :ok = Object.delete_bucket(:gnat, bucket)
+    end
+  end
+
   describe "get_object/4" do
     test "retrieves and object chunk-by-chunk" do
       nuid = Jetstream.API.Util.nuid()
@@ -51,7 +70,7 @@ defmodule Jetstream.API.ObjectTest do
 
       assert_received :got_chunk
 
-      Object.delete_bucket(:gnat, nuid)
+      :ok = Object.delete_bucket(:gnat, nuid)
     end
   end
 
@@ -73,6 +92,7 @@ defmodule Jetstream.API.ObjectTest do
       bucket = nuid()
       assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
       assert {:ok, []} = Object.list_objects(:gnat, bucket)
+      assert :ok = Object.delete_bucket(:gnat, bucket)
     end
 
     test "list a bucket with two files" do
@@ -88,6 +108,8 @@ defmodule Jetstream.API.ObjectTest do
       assert readme.name == "README.md"
       assert readme.size == something.size
       assert readme.digest == something.digest
+
+      assert :ok = Object.delete_bucket(:gnat, bucket)
     end
   end
 
@@ -128,11 +150,18 @@ defmodule Jetstream.API.ObjectTest do
       Process.put(:buffer, Process.get(:buffer) <> chunk)
     end)
 
+    {:ok, %{state: state}} = Stream.info(:gnat, "OBJ_#{bucket}")
+    assert state.bytes > 2 * 1024 * 1024
+
     file_contents = Process.get(:buffer)
 
     assert byte_size(file_contents) == meta.size
     assert :crypto.hash(:sha256, file_contents) == sha
-    assert :ok = Object.delete_bucket(:gnat, bucket)
+
+    assert :ok = Object.delete_object(:gnat, bucket, "big")
+    {:ok, %{state: state}} = Stream.info(:gnat, "OBJ_#{bucket}")
+    assert state.bytes < 1024
+    :ok = Object.delete_bucket(:gnat, bucket)
   end
 
   # create a random 2MB binary file

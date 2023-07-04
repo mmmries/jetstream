@@ -35,6 +35,17 @@ defmodule Jetstream.API.Object do
     Stream.delete(conn, stream_name(bucket_name))
   end
 
+  def delete_object(conn, bucket_name, object_name) do
+    with {:ok, meta} <- info(conn, bucket_name, object_name),
+         meta <- %Meta{meta | deleted: true},
+         topic <- meta_stream_topic(bucket_name, object_name),
+         {:ok, body} <- Jason.encode(meta),
+         {:ok, _msg} <- Gnat.request(conn, topic, body, headers: [{"Nats-Rollup", "sub"}]) do
+      filter = chunk_stream_topic(meta)
+      Stream.purge(conn, stream_name(bucket_name), %{filter: filter})
+    end
+  end
+
   def get_object(conn, bucket_name, object_name, chunk_fun) do
     with {:ok, %{config: _stream}} <- Stream.info(conn, stream_name(bucket_name)),
          {:ok, meta} <- info(conn, bucket_name, object_name) do
@@ -58,7 +69,7 @@ defmodule Jetstream.API.Object do
     end
   end
 
-  def list_objects(conn, bucket_name) do
+  def list_objects(conn, bucket_name, options \\ []) do
     with {:ok, %{config: stream}} <- Stream.info(conn, stream_name(bucket_name)),
          topic <- Util.reply_inbox(),
          {:ok, sub} <- Gnat.sub(conn, self(), topic),
@@ -77,7 +88,13 @@ defmodule Jetstream.API.Object do
       :ok = Gnat.unsub(conn, sub)
       :ok = Consumer.delete(conn, stream.name, consumer.name)
 
-      {:ok, messages}
+      show_deleted = Keyword.get(options, :show_deleted, false)
+
+      if show_deleted do
+        {:ok, messages}
+      else
+        {:ok, Enum.reject(messages, &(&1.deleted == true))}
+      end
     end
   end
 
@@ -150,6 +167,8 @@ defmodule Jetstream.API.Object do
   defp adjust_duplicate_window(_ttl), do: @two_minutes_in_nanoseconds
 
   defp json_to_meta(json) do
+    raw = Jason.decode!(json)
+
     %{
       "bucket" => bucket,
       "chunks" => chunks,
@@ -157,12 +176,13 @@ defmodule Jetstream.API.Object do
       "name" => name,
       "nuid" => nuid,
       "size" => size
-    } = Jason.decode!(json)
+    } = raw
 
     %Meta{
       bucket: bucket,
       chunks: chunks,
       digest: digest,
+      deleted: Map.get(raw, "deleted", false),
       name: name,
       nuid: nuid,
       size: size
