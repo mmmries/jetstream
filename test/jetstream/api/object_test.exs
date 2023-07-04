@@ -37,6 +37,37 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
+  describe "get_object/4" do
+    test "retrieves and object chunk-by-chunk" do
+      nuid = Jetstream.API.Util.nuid()
+      assert {:ok, _} = Object.create_bucket(:gnat, nuid)
+      readme_content = File.read!(@readme_path)
+      assert {:ok, _meta} = put_filepath(@readme_path, nuid, "README.md")
+
+      Object.get_object(:gnat, nuid, "README.md", fn chunk ->
+        assert chunk == readme_content
+        send(self(), :got_chunk)
+      end)
+
+      assert_received :got_chunk
+
+      Object.delete_bucket(:gnat, nuid)
+    end
+  end
+
+  describe "info/3" do
+    test "lookup meta information about an object" do
+      assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "INF")
+      assert {:ok, io} = File.open(@readme_path, [:read])
+      assert {:ok, initial_meta} = Object.put_object(:gnat, "INF", "README.md", io)
+
+      assert {:ok, lookup_meta} = Object.info(:gnat, "INF", "README.md")
+      assert lookup_meta == initial_meta
+
+      assert :ok = Object.delete_bucket(:gnat, "INF")
+    end
+  end
+
   describe "list_objects/3" do
     test "list an empty bucket" do
       bucket = nuid()
@@ -60,39 +91,75 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
-  describe "info/3" do
-    test "lookup meta information about an object" do
-      assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "INF")
-      assert {:ok, io} = File.open(@readme_path, [:read])
-      assert {:ok, initial_meta} = Object.put_object(:gnat, "INF", "README.md", io)
-
-      assert {:ok, lookup_meta} = Object.info(:gnat, "INF", "README.md")
-      assert lookup_meta == initial_meta
-
-      assert :ok = Object.delete_bucket(:gnat, "INF")
-    end
-  end
-
   describe "put_object/4" do
     test "creates an object" do
-      {:ok, bytes} = File.read(@readme_path)
-      sha = :crypto.hash(:sha256, bytes)
-      assert {:ok, io} = File.open(@readme_path, [:read])
-
       assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "MY-STORE")
-      assert {:ok, object_meta} = Object.put_object(:gnat, "MY-STORE", "README.md", io)
+
+      expected_sha = @readme_path |> File.read!() |> then(&:crypto.hash(:sha256, &1))
+      assert {:ok, object_meta} = put_filepath(@readme_path, "MY-STORE", "README.md")
       assert object_meta.name == "README.md"
       assert object_meta.bucket == "MY-STORE"
       assert object_meta.chunks == 1
       assert "SHA-256=" <> encoded = object_meta.digest
-      assert Base.decode64!(encoded) == sha
+      assert Base.url_decode64!(encoded) == expected_sha
+
       assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
     end
 
     test "return an error if the object store doesn't exist" do
-      assert {:ok, io} = File.open(@readme_path, [:read])
-      assert {:error, err} = Object.put_object(:gnat, "I_DONT_EXIST", "foo", io)
+      assert {:error, err} = put_filepath(@readme_path, "I_DONT_EXIST", "foo")
       assert %{"code" => 404, "description" => "stream not found"} = err
     end
+  end
+
+  test "storing and retrieving larger files" do
+    assert {:ok, path, sha} = generate_big_file()
+    bucket = nuid()
+    assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, bucket)
+    assert {:ok, meta} = put_filepath(path, bucket, "big")
+    assert meta.chunks == 16
+    assert meta.size == 16 * 128 * 1024
+    assert "SHA-256=" <> encoded = meta.digest
+    assert Base.url_decode64!(encoded) == sha
+
+    Process.put(:buffer, "")
+
+    Object.get_object(:gnat, bucket, "big", fn chunk ->
+      Process.put(:buffer, Process.get(:buffer) <> chunk)
+    end)
+
+    file_contents = Process.get(:buffer)
+
+    assert byte_size(file_contents) == meta.size
+    assert :crypto.hash(:sha256, file_contents) == sha
+    assert :ok = Object.delete_bucket(:gnat, bucket)
+  end
+
+  # create a random 2MB binary file
+  # re-use it on subsequent test runs if it already exists
+  defp generate_big_file do
+    filepath = Path.join("tmp", "big_file.bin")
+
+    if File.exists?(filepath) do
+      content = File.read!(filepath)
+      sha = :crypto.hash(:sha256, content)
+      {:ok, filepath, sha}
+    else
+      {:ok, _} =
+        File.open(filepath, [:write], fn fh ->
+          Enum.each(1..16, fn _ ->
+            rand_chunk = :crypto.strong_rand_bytes(128) |> String.duplicate(1024)
+
+            :ok = IO.binwrite(fh, rand_chunk)
+          end)
+        end)
+
+      generate_big_file()
+    end
+  end
+
+  defp put_filepath(path, bucket, name) do
+    {:ok, io} = File.open(path, [:read])
+    Object.put_object(:gnat, bucket, name, io)
   end
 end
