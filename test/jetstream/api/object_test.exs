@@ -4,6 +4,7 @@ defmodule Jetstream.API.ObjectTest do
   import Jetstream.API.Util, only: [nuid: 0]
 
   @moduletag with_gnat: :gnat
+  @changelog_path Path.join([Path.dirname(__DIR__), "..", "..", "CHANGELOG.md"])
   @readme_path Path.join([Path.dirname(__DIR__), "..", "..", "README.md"])
 
   describe "create_bucket/3" do
@@ -128,6 +129,18 @@ defmodule Jetstream.API.ObjectTest do
       assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
     end
 
+    test "overwriting a file" do
+      bucket = nuid()
+      assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, bucket)
+      assert {:ok, _} = put_filepath(@readme_path, bucket, "WAT")
+      size_after_readme = stream_byte_size(bucket)
+      assert {:ok, _} = put_filepath(@changelog_path, bucket, "WAT")
+      size_after_changelog = stream_byte_size(bucket)
+      assert size_after_changelog < size_after_readme
+      assert {:ok, [meta]} = Object.list_objects(:gnat, bucket)
+      assert meta.name == "WAT"
+    end
+
     test "return an error if the object store doesn't exist" do
       assert {:error, err} = put_filepath(@readme_path, "I_DONT_EXIST", "foo")
       assert %{"code" => 404, "description" => "stream not found"} = err
@@ -150,17 +163,13 @@ defmodule Jetstream.API.ObjectTest do
       Process.put(:buffer, Process.get(:buffer) <> chunk)
     end)
 
-    {:ok, %{state: state}} = Stream.info(:gnat, "OBJ_#{bucket}")
-    assert state.bytes > 2 * 1024 * 1024
-
     file_contents = Process.get(:buffer)
-
     assert byte_size(file_contents) == meta.size
     assert :crypto.hash(:sha256, file_contents) == sha
+    assert stream_byte_size(bucket) > 2 * 1024 * 1024
 
     assert :ok = Object.delete_object(:gnat, bucket, "big")
-    {:ok, %{state: state}} = Stream.info(:gnat, "OBJ_#{bucket}")
-    assert state.bytes < 1024
+    assert stream_byte_size(bucket) < 1024
     :ok = Object.delete_bucket(:gnat, bucket)
   end
 
@@ -190,5 +199,10 @@ defmodule Jetstream.API.ObjectTest do
   defp put_filepath(path, bucket, name) do
     {:ok, io} = File.open(path, [:read])
     Object.put_object(:gnat, bucket, name, io)
+  end
+
+  defp stream_byte_size(bucket) do
+    {:ok, %{state: state}} = Stream.info(:gnat, "OBJ_#{bucket}")
+    state.bytes
   end
 end

@@ -104,7 +104,8 @@ defmodule Jetstream.API.Object do
     nuid = Util.nuid()
     chunk_topic = chunk_stream_topic(bucket_name, nuid)
 
-    with {:ok, %{config: _stream}} <- Stream.info(conn, stream_name(bucket_name)),
+    with {:ok, %{config: _}} <- Stream.info(conn, stream_name(bucket_name)),
+         :ok <- purge_prior_chunks(conn, bucket_name, object_name),
          {:ok, chunks, size, digest} <- send_chunks(conn, io, chunk_topic) do
       object_meta = %Meta{
         name: object_name,
@@ -187,6 +188,19 @@ defmodule Jetstream.API.Object do
       nuid: nuid,
       size: size
     }
+  end
+
+  defp purge_prior_chunks(conn, bucket, name) do
+    case info(conn, bucket, name) do
+      {:ok, meta} ->
+        Stream.purge(conn, stream_name(bucket), %{filter: chunk_stream_topic(meta)})
+
+      {:error, %{"code" => 404}} ->
+        :ok
+
+      {:error, other} ->
+        {:error, other}
+    end
   end
 
   defp receive_all_metas(sid, num_pending, messages \\ [])
