@@ -26,7 +26,8 @@ defmodule Jetstream.API.ObjectTest do
 
     test "creating a bucket with TTL" do
       bucket = nuid()
-      ttl = 10 * 1_000_000_000 # 10s in nanoseconds
+      # 10s in nanoseconds
+      ttl = 10 * 1_000_000_000
       assert {:ok, %{config: config}} = Object.create_bucket(:gnat, bucket, ttl: ttl)
       assert config.max_age == ttl
 
