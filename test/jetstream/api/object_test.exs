@@ -24,6 +24,15 @@ defmodule Jetstream.API.ObjectTest do
       assert :ok = Object.delete_bucket(:gnat, "MY-STORE")
     end
 
+    test "creating a bucket with TTL" do
+      bucket = nuid()
+      ttl = 10 * 1_000_000_000 # 10s in nanoseconds
+      assert {:ok, %{config: config}} = Object.create_bucket(:gnat, bucket, ttl: ttl)
+      assert config.max_age == ttl
+
+      assert :ok = Object.delete_bucket(:gnat, bucket)
+    end
+
     test "bucket names are validated" do
       assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "")
       assert {:error, "invalid bucket name"} = Object.create_bucket(:gnat, "MY.STORE")
