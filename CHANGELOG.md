@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.8
+
+* Added the `Jetstream.API.Object` module for interacting with the ObjectStore pattern https://github.com/mmmries/jetstream/pull/78
+
 ## 0.0.7
 
 * Makes `KV.put_value`, `KV.create_key`, `KV.delete_key`, and `KV.purge_key` synchronous
