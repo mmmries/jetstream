@@ -10,14 +10,16 @@ defmodule Jetstream.API.Object do
   @stream_prefix "OBJ_"
   @subject_prefix "$O."
 
-  @type bucket_opt :: {:description, String.t()}
-                    | {:max_bucket_size, integer()}
-                    | {:max_chunk_size, integer()}
-                    | {:placement, Stream.placement()}
-                    | {:replicas, non_neg_integer()}
-                    | {:storage, :file | :memory}
-                    | {:ttl, non_neg_integer()}
-  @spec create_bucket(Gnat.t(), String.t(), list(bucket_opt)) :: {:ok, Stream.info()} | {:error, any()}
+  @type bucket_opt ::
+          {:description, String.t()}
+          | {:max_bucket_size, integer()}
+          | {:max_chunk_size, integer()}
+          | {:placement, Stream.placement()}
+          | {:replicas, non_neg_integer()}
+          | {:storage, :file | :memory}
+          | {:ttl, non_neg_integer()}
+  @spec create_bucket(Gnat.t(), String.t(), list(bucket_opt)) ::
+          {:ok, Stream.info()} | {:error, any()}
   def create_bucket(conn, bucket_name, params \\ []) do
     with :ok <- validate_bucket_name(bucket_name) do
       stream = %Stream{
