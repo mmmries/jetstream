@@ -35,7 +35,7 @@ defmodule Jetstream.API.Object do
     Stream.delete(conn, stream_name(bucket_name))
   end
 
-  def delete_object(conn, bucket_name, object_name) do
+  def delete(conn, bucket_name, object_name) do
     with {:ok, meta} <- info(conn, bucket_name, object_name),
          meta <- %Meta{meta | deleted: true},
          topic <- meta_stream_topic(bucket_name, object_name),
@@ -46,13 +46,15 @@ defmodule Jetstream.API.Object do
     end
   end
 
-  def get_object(conn, bucket_name, object_name, chunk_fun) do
+  @spec get(Gnat.t(), String.t(), String.t(), (binary -> any())) :: :ok | {:error, any}
+  def get(conn, bucket_name, object_name, chunk_fun) do
     with {:ok, %{config: _stream}} <- Stream.info(conn, stream_name(bucket_name)),
          {:ok, meta} <- info(conn, bucket_name, object_name) do
       receive_chunks(conn, meta, chunk_fun)
     end
   end
 
+  @spec info(Gnat.t(), String.t(), String.t()) :: {:ok, Meta.t()} | {:error, any}
   def info(conn, bucket_name, object_name) do
     with {:ok, _stream_info} <- Stream.info(conn, stream_name(bucket_name)) do
       Stream.get_message(conn, stream_name(bucket_name), %{
@@ -69,7 +71,9 @@ defmodule Jetstream.API.Object do
     end
   end
 
-  def list_objects(conn, bucket_name, options \\ []) do
+  @type list_option :: {:show_deleted, boolean()}
+  @spec list(Gnat.t(), String.t(), list(list_option())) :: {:error, any} | {:ok, list(Meta.t())}
+  def list(conn, bucket_name, options \\ []) do
     with {:ok, %{config: stream}} <- Stream.info(conn, stream_name(bucket_name)),
          topic <- Util.reply_inbox(),
          {:ok, sub} <- Gnat.sub(conn, self(), topic),
@@ -98,9 +102,9 @@ defmodule Jetstream.API.Object do
     end
   end
 
-  @spec put_object(Gnat.t(), String.t(), String.t(), File.io_device()) ::
-          {:ok, map()} | {:error, any()}
-  def put_object(conn, bucket_name, object_name, io) do
+  @spec put(Gnat.t(), String.t(), String.t(), File.io_device()) ::
+          {:ok, Meta.t()} | {:error, any()}
+  def put(conn, bucket_name, object_name, io) do
     nuid = Util.nuid()
     chunk_topic = chunk_stream_topic(bucket_name, nuid)
 

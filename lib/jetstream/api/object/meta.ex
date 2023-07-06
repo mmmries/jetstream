@@ -8,6 +8,16 @@ defmodule Jetstream.API.Object.Meta do
             name: nil,
             nuid: nil,
             size: nil
+
+  @type t :: %__MODULE__{
+          bucket: String.t(),
+          chunks: non_neg_integer(),
+          deleted: boolean(),
+          digest: String.t(),
+          name: String.t(),
+          nuid: String.t(),
+          size: non_neg_integer()
+        }
 end
 
 defimpl Jason.Encoder, for: Jetstream.API.Object.Meta do

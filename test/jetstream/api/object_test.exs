@@ -48,18 +48,18 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
-  describe "delete_object/3" do
+  describe "delete/3" do
     test "delete an object" do
       bucket = nuid()
       assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
       {:ok, _} = put_filepath(@readme_path, bucket, "README.md")
       {:ok, _} = put_filepath(@readme_path, bucket, "OTHER.md")
-      assert :ok = Object.delete_object(:gnat, bucket, "README.md")
+      assert :ok = Object.delete(:gnat, bucket, "README.md")
 
-      assert {:ok, objects} = Object.list_objects(:gnat, bucket)
+      assert {:ok, objects} = Object.list(:gnat, bucket)
       assert Enum.count(objects) == 1
       assert Enum.map(objects, & &1.name) == ["OTHER.md"]
-      assert {:ok, objects} = Object.list_objects(:gnat, bucket, show_deleted: true)
+      assert {:ok, objects} = Object.list(:gnat, bucket, show_deleted: true)
       assert Enum.count(objects) == 2
       assert Enum.map(objects, & &1.name) |> Enum.sort() == ["OTHER.md", "README.md"]
 
@@ -67,17 +67,18 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
-  describe "get_object/4" do
+  describe "get/4" do
     test "retrieves and object chunk-by-chunk" do
       nuid = Jetstream.API.Util.nuid()
       assert {:ok, _} = Object.create_bucket(:gnat, nuid)
       readme_content = File.read!(@readme_path)
       assert {:ok, _meta} = put_filepath(@readme_path, nuid, "README.md")
 
-      Object.get_object(:gnat, nuid, "README.md", fn chunk ->
-        assert chunk == readme_content
-        send(self(), :got_chunk)
-      end)
+      assert :ok =
+               Object.get(:gnat, nuid, "README.md", fn chunk ->
+                 assert chunk == readme_content
+                 send(self(), :got_chunk)
+               end)
 
       assert_received :got_chunk
 
@@ -89,7 +90,7 @@ defmodule Jetstream.API.ObjectTest do
     test "lookup meta information about an object" do
       assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "INF")
       assert {:ok, io} = File.open(@readme_path, [:read])
-      assert {:ok, initial_meta} = Object.put_object(:gnat, "INF", "README.md", io)
+      assert {:ok, initial_meta} = Object.put(:gnat, "INF", "README.md", io)
 
       assert {:ok, lookup_meta} = Object.info(:gnat, "INF", "README.md")
       assert lookup_meta == initial_meta
@@ -98,11 +99,11 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
-  describe "list_objects/3" do
+  describe "list/3" do
     test "list an empty bucket" do
       bucket = nuid()
       assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
-      assert {:ok, []} = Object.list_objects(:gnat, bucket)
+      assert {:ok, []} = Object.list(:gnat, bucket)
       assert :ok = Object.delete_bucket(:gnat, bucket)
     end
 
@@ -110,11 +111,11 @@ defmodule Jetstream.API.ObjectTest do
       bucket = nuid()
       assert {:ok, %{config: _config}} = Object.create_bucket(:gnat, bucket)
       assert {:ok, io} = File.open(@readme_path, [:read])
-      assert {:ok, _object} = Object.put_object(:gnat, bucket, "README.md", io)
+      assert {:ok, _object} = Object.put(:gnat, bucket, "README.md", io)
       assert {:ok, io} = File.open(@readme_path, [:read])
-      assert {:ok, _object} = Object.put_object(:gnat, bucket, "SOMETHING.md", io)
+      assert {:ok, _object} = Object.put(:gnat, bucket, "SOMETHING.md", io)
 
-      assert {:ok, objects} = Object.list_objects(:gnat, bucket)
+      assert {:ok, objects} = Object.list(:gnat, bucket)
       [readme, something] = Enum.sort_by(objects, & &1.name)
       assert readme.name == "README.md"
       assert readme.size == something.size
@@ -124,7 +125,7 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
-  describe "put_object/4" do
+  describe "put/4" do
     test "creates an object" do
       assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, "MY-STORE")
 
@@ -147,7 +148,7 @@ defmodule Jetstream.API.ObjectTest do
       assert {:ok, _} = put_filepath(@changelog_path, bucket, "WAT")
       size_after_changelog = stream_byte_size(bucket)
       assert size_after_changelog < size_after_readme
-      assert {:ok, [meta]} = Object.list_objects(:gnat, bucket)
+      assert {:ok, [meta]} = Object.list(:gnat, bucket)
       assert meta.name == "WAT"
     end
 
@@ -169,7 +170,7 @@ defmodule Jetstream.API.ObjectTest do
 
     Process.put(:buffer, "")
 
-    Object.get_object(:gnat, bucket, "big", fn chunk ->
+    Object.get(:gnat, bucket, "big", fn chunk ->
       Process.put(:buffer, Process.get(:buffer) <> chunk)
     end)
 
@@ -178,7 +179,7 @@ defmodule Jetstream.API.ObjectTest do
     assert :crypto.hash(:sha256, file_contents) == sha
     assert stream_byte_size(bucket) > 2 * 1024 * 1024
 
-    assert :ok = Object.delete_object(:gnat, bucket, "big")
+    assert :ok = Object.delete(:gnat, bucket, "big")
     assert stream_byte_size(bucket) < 1024
     :ok = Object.delete_bucket(:gnat, bucket)
   end
@@ -208,7 +209,7 @@ defmodule Jetstream.API.ObjectTest do
 
   defp put_filepath(path, bucket, name) do
     {:ok, io} = File.open(path, [:read])
-    Object.put_object(:gnat, bucket, name, io)
+    Object.put(:gnat, bucket, name, io)
   end
 
   defp stream_byte_size(bucket) do
