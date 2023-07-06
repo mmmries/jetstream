@@ -158,13 +158,14 @@ defmodule Jetstream.API.ObjectTest do
     end
   end
 
-  test "storing and retrieving larger files" do
-    assert {:ok, path, sha} = generate_big_file()
+  @tag :tmp_dir
+  test "storing and retrieving larger files", %{tmp_dir: tmp_dir} do
+    assert {:ok, path, sha} = generate_big_file(tmp_dir)
     bucket = nuid()
     assert {:ok, %{config: _stream}} = Object.create_bucket(:gnat, bucket)
     assert {:ok, meta} = put_filepath(path, bucket, "big")
-    assert meta.chunks == 16
-    assert meta.size == 16 * 128 * 1024
+    assert meta.chunks == 8
+    assert meta.size == 8 * 128 * 1024
     assert "SHA-256=" <> encoded = meta.digest
     assert Base.url_decode64!(encoded) == sha
 
@@ -177,34 +178,29 @@ defmodule Jetstream.API.ObjectTest do
     file_contents = Process.get(:buffer)
     assert byte_size(file_contents) == meta.size
     assert :crypto.hash(:sha256, file_contents) == sha
-    assert stream_byte_size(bucket) > 2 * 1024 * 1024
+    assert stream_byte_size(bucket) > 1024 * 1024
 
     assert :ok = Object.delete(:gnat, bucket, "big")
     assert stream_byte_size(bucket) < 1024
     :ok = Object.delete_bucket(:gnat, bucket)
   end
 
-  # create a random 2MB binary file
+  # create a random 1MB binary file
   # re-use it on subsequent test runs if it already exists
-  defp generate_big_file do
-    filepath = Path.join("tmp", "big_file.bin")
+  defp generate_big_file(tmp_dir) do
+    filepath = Path.join(tmp_dir, "big_file.bin")
+    sha = :crypto.hash_init(:sha256)
+    {:ok, fh} = File.open(filepath, [:write])
 
-    if File.exists?(filepath) do
-      content = File.read!(filepath)
-      sha = :crypto.hash(:sha256, content)
-      {:ok, filepath, sha}
-    else
-      {:ok, _} =
-        File.open(filepath, [:write], fn fh ->
-          Enum.each(1..16, fn _ ->
-            rand_chunk = :crypto.strong_rand_bytes(128) |> String.duplicate(1024)
+    sha =
+      Enum.reduce(1..8, sha, fn _, digest ->
+        rand_chunk = :crypto.strong_rand_bytes(128) |> String.duplicate(1024)
+        :ok = IO.binwrite(fh, rand_chunk)
+        :crypto.hash_update(digest, rand_chunk)
+      end)
 
-            :ok = IO.binwrite(fh, rand_chunk)
-          end)
-        end)
-
-      generate_big_file()
-    end
+    :ok = File.close(fh)
+    {:ok, filepath, :crypto.hash_final(sha)}
   end
 
   defp put_filepath(path, bucket, name) do

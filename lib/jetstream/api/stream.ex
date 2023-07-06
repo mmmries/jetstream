@@ -333,7 +333,8 @@ defmodule Jetstream.API.Stream do
       :ok
 
   """
-  @spec purge(conn :: Gnat.t(), stream_name :: binary()) :: :ok | {:error, any()}
+  @type method :: %{filter: String.t()}
+  @spec purge(conn :: Gnat.t(), stream_name :: binary(), method) :: :ok | {:error, any()}
   def purge(conn, stream_name, method) when is_binary(stream_name) do
     with :ok <- validate_purge_method(method),
          body <- Jason.encode!(method),
