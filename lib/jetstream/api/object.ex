@@ -10,6 +10,14 @@ defmodule Jetstream.API.Object do
   @stream_prefix "OBJ_"
   @subject_prefix "$O."
 
+  @type bucket_opt :: {:description, String.t()}
+                    | {:max_bucket_size, integer()}
+                    | {:max_chunk_size, integer()}
+                    | {:placement, Stream.placement()}
+                    | {:replicas, non_neg_integer()}
+                    | {:storage, :file | :memory}
+                    | {:ttl, non_neg_integer()}
+  @spec create_bucket(Gnat.t(), String.t(), list(bucket_opt)) :: {:ok, Stream.info()} | {:error, any()}
   def create_bucket(conn, bucket_name, params \\ []) do
     with :ok <- validate_bucket_name(bucket_name) do
       stream = %Stream{
@@ -20,7 +28,7 @@ defmodule Jetstream.API.Object do
         allow_rollup_hdrs: true,
         max_age: Keyword.get(params, :ttl, 0),
         max_bytes: Keyword.get(params, :max_bucket_size, -1),
-        max_msg_size: Keyword.get(params, :max_value_size, -1),
+        max_msg_size: Keyword.get(params, :max_chunk_size, -1),
         num_replicas: Keyword.get(params, :replicas, 1),
         storage: Keyword.get(params, :storage, :file),
         placement: Keyword.get(params, :placement),
@@ -31,10 +39,12 @@ defmodule Jetstream.API.Object do
     end
   end
 
+  @spec delete_bucket(Gnat.t(), String.t()) :: :ok | {:error, any}
   def delete_bucket(conn, bucket_name) do
     Stream.delete(conn, stream_name(bucket_name))
   end
 
+  @spec delete(Gnat.t(), String.t(), String.t()) :: :ok | {:error, any}
   def delete(conn, bucket_name, object_name) do
     with {:ok, meta} <- info(conn, bucket_name, object_name),
          meta <- %Meta{meta | deleted: true},

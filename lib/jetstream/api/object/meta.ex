@@ -1,5 +1,4 @@
 defmodule Jetstream.API.Object.Meta do
-  @derive Jason.Encoder
   @enforce_keys [:bucket, :chunks, :digest, :name, :nuid, :size]
   defstruct bucket: nil,
             chunks: nil,
