@@ -24,3 +24,6 @@ jetstream-*.tar
 
 # ASDF tool versions
 .tool-versions
+
+# tmp directory to test files
+tmp

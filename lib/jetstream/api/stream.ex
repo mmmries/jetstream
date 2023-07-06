@@ -324,6 +324,26 @@ defmodule Jetstream.API.Stream do
   end
 
   @doc """
+  Purges some of the messages in a stream.
+
+  ## Examples
+
+      iex> Jetstream.API.Stream.create(:gnat, %Jetstream.API.Stream{name: "stream", subjects: ["sub1", "sub2"]})
+      iex> Jetstream.API.Stream.purge(:gnat, "stream", %{filter: "sub1"})
+      :ok
+
+  """
+  @type method :: %{filter: String.t()}
+  @spec purge(conn :: Gnat.t(), stream_name :: binary(), method) :: :ok | {:error, any()}
+  def purge(conn, stream_name, method) when is_binary(stream_name) do
+    with :ok <- validate_purge_method(method),
+         body <- Jason.encode!(method),
+         {:ok, _response} <- request(conn, "$JS.API.STREAM.PURGE.#{stream_name}", body) do
+      :ok
+    end
+  end
+
+  @doc """
   Information about config and state of a Stream.
 
   ## Examples
@@ -486,5 +506,13 @@ defmodule Jetstream.API.Stream do
     else
       {:error, "To get a message you must use only one of `seq` or `last_by_subj`"}
     end
+  end
+
+  defp validate_purge_method(%{filter: subject}) when is_binary(subject) do
+    :ok
+  end
+
+  defp validate_purge_method(_) do
+    {:error, "When purging, you must pass a %{filter: subject}"}
   end
 end
