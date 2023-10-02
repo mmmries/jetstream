@@ -176,7 +176,7 @@ def start(_type, _args) do
 Let's now publish some messages to our `HELLO` stream, so something will be waiting for our
 application to be read when it starts.
 
-## Publising messages to streams
+## Publishing messages to streams
 
 Jetstream listens on regular NATS subjects, so publishing messages is dead simple with `Gnat.pub/3`:
 
