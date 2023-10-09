@@ -54,7 +54,7 @@ defmodule Jetstream.API.Object do
          {:ok, body} <- Jason.encode(meta),
          {:ok, _msg} <- Gnat.request(conn, topic, body, headers: [{"Nats-Rollup", "sub"}]) do
       filter = chunk_stream_topic(meta)
-      Stream.purge(conn, stream_name(bucket_name), %{filter: filter})
+      Stream.purge(conn, stream_name(bucket_name), nil, %{filter: filter})
     end
   end
 
@@ -209,7 +209,7 @@ defmodule Jetstream.API.Object do
   defp purge_prior_chunks(conn, bucket, name) do
     case info(conn, bucket, name) do
       {:ok, meta} ->
-        Stream.purge(conn, stream_name(bucket), %{filter: chunk_stream_topic(meta)})
+        Stream.purge(conn, stream_name(bucket), nil, %{filter: chunk_stream_topic(meta)})
 
       {:error, %{"code" => 404}} ->
         :ok

@@ -10,7 +10,8 @@ defmodule Jetstream.PullConsumer.ConnectionOptions do
     :consumer_name,
     :connection_retry_timeout,
     :connection_retries,
-    :inbox_prefix
+    :inbox_prefix,
+    :domain
   ]
 
   defstruct @enforce_keys
@@ -26,7 +27,8 @@ defmodule Jetstream.PullConsumer.ConnectionOptions do
           :consumer_name,
           connection_retry_timeout: @default_retry_timeout,
           connection_retries: @default_retries,
-          inbox_prefix: nil
+          inbox_prefix: nil,
+          domain: nil
         ])
       )
     end
@@ -38,7 +40,8 @@ defmodule Jetstream.PullConsumer.ConnectionOptions do
           [
             connection_retry_timeout: @default_retry_timeout,
             connection_retries: @default_retries,
-            inbox_prefix: nil
+            inbox_prefix: nil,
+            domain: nil
           ],
           connection_options
         )

@@ -30,6 +30,16 @@ defmodule Jetstream.API.KV.Watcher do
     GenServer.stop(pid)
   end
 
+  @spec init(keyword) ::
+          {:ok,
+           %{
+             bucket_name: any,
+             conn: any,
+             consumer_name: <<_::64, _::_*8>>,
+             domain: any,
+             handler: any,
+             sub: binary | non_neg_integer
+           }}
   def init(opts) do
     {:ok, {sub, consumer_name}} = subscribe(opts[:conn], opts[:bucket_name])
 
@@ -39,14 +49,15 @@ defmodule Jetstream.API.KV.Watcher do
        conn: opts[:conn],
        bucket_name: opts[:bucket_name],
        sub: sub,
-       consumer_name: consumer_name
+       consumer_name: consumer_name,
+       domain: Keyword.get(opts, :domain)
      }}
   end
 
   def terminate(_reason, state) do
     stream = KV.stream_name(state.bucket_name)
     :ok = Gnat.unsub(state.conn, state.sub)
-    :ok = Consumer.delete(state.conn, stream, state.consumer_name)
+    :ok = Consumer.delete(state.conn, stream, state.consumer_name, state.domain)
   end
 
   # Received from NATS when headers are on the message (delete)
