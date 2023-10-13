@@ -302,9 +302,10 @@ defmodule Jetstream.API.Consumer do
       iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.list(:gnat, "wrong_stream")
 
   """
-  @spec list(conn :: Gnat.t(), stream_name :: binary(), domain :: nil | binary(), params :: [offset: non_neg_integer()]) ::
+  @spec list(conn :: Gnat.t(), stream_name :: binary(), params :: [offset: non_neg_integer(), domain: nil | binary()]) ::
           {:ok, consumers()} | {:error, term()}
-  def list(conn, stream_name, domain \\ nil, params \\ []) do
+  def list(conn, stream_name, params \\ []) do
+    domain = Keyword.get(params, :domain)
     payload =
       Jason.encode!(%{
         offset: Keyword.get(params, :offset, 0)

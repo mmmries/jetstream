@@ -30,16 +30,6 @@ defmodule Jetstream.API.KV.Watcher do
     GenServer.stop(pid)
   end
 
-  @spec init(keyword) ::
-          {:ok,
-           %{
-             bucket_name: any,
-             conn: any,
-             consumer_name: <<_::64, _::_*8>>,
-             domain: any,
-             handler: any,
-             sub: binary | non_neg_integer
-           }}
   def init(opts) do
     {:ok, {sub, consumer_name}} = subscribe(opts[:conn], opts[:bucket_name])
 
