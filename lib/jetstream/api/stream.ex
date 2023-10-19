@@ -266,7 +266,11 @@ defmodule Jetstream.API.Stream do
   def create(conn, %__MODULE__{} = stream) do
     with :ok <- validate(stream),
          {:ok, stream} <-
-           request(conn, "#{js_api(stream.domain)}.STREAM.CREATE.#{stream.name}", Jason.encode!(stream)) do
+           request(
+             conn,
+             "#{js_api(stream.domain)}.STREAM.CREATE.#{stream.name}",
+             Jason.encode!(stream)
+           ) do
       {:ok, to_info(stream)}
     end
   end
@@ -284,7 +288,11 @@ defmodule Jetstream.API.Stream do
   def update(conn, %__MODULE__{} = stream) do
     with :ok <- validate(stream),
          {:ok, stream} <-
-           request(conn, "#{js_api(stream.domain)}.STREAM.UPDATE.#{stream.name}", Jason.encode!(stream)) do
+           request(
+             conn,
+             "#{js_api(stream.domain)}.STREAM.UPDATE.#{stream.name}",
+             Jason.encode!(stream)
+           ) do
       {:ok, to_info(stream)}
     end
   end
@@ -301,7 +309,8 @@ defmodule Jetstream.API.Stream do
       iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Stream.delete(:gnat, "wrong_stream")
 
   """
-  @spec delete(conn :: Gnat.t(), stream_name :: binary(), domain :: nil | binary()) :: :ok | {:error, any()}
+  @spec delete(conn :: Gnat.t(), stream_name :: binary(), domain :: nil | binary()) ::
+          :ok | {:error, any()}
   def delete(conn, stream_name, domain \\ nil) when is_binary(stream_name) do
     with {:ok, _response} <- request(conn, "#{js_api(domain)}.STREAM.DELETE.#{stream_name}", "") do
       :ok
@@ -320,7 +329,8 @@ defmodule Jetstream.API.Stream do
       iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Stream.purge(:gnat, "wrong_stream")
 
   """
-  @spec purge(conn :: Gnat.t(), stream_name :: binary(), domain :: nil | binary()) :: :ok | {:error, any()}
+  @spec purge(conn :: Gnat.t(), stream_name :: binary(), domain :: nil | binary()) ::
+          :ok | {:error, any()}
   def purge(conn, stream_name, domain \\ nil) when is_binary(stream_name) do
     with {:ok, _response} <- request(conn, "#{js_api(domain)}.STREAM.PURGE.#{stream_name}", "") do
       :ok
@@ -338,7 +348,8 @@ defmodule Jetstream.API.Stream do
 
   """
   @type method :: %{filter: String.t()}
-  @spec purge(conn :: Gnat.t(), stream_name :: binary(), domain :: nil | binary(), method) :: :ok | {:error, any()}
+  @spec purge(conn :: Gnat.t(), stream_name :: binary(), domain :: nil | binary(), method) ::
+          :ok | {:error, any()}
   def purge(conn, stream_name, domain, method) when is_binary(stream_name) do
     with :ok <- validate_purge_method(method),
          body <- Jason.encode!(method),
@@ -379,10 +390,14 @@ defmodule Jetstream.API.Stream do
       iex> {:ok, %{total: _, offset: 0, limit: 1024, streams: _}} = Jetstream.API.Stream.list(:gnat)
 
   """
-  @spec list(conn :: Gnat.t(), params :: [offset: non_neg_integer(), subject: binary(), domain: nil | binary()]) ::
+  @spec list(
+          conn :: Gnat.t(),
+          params :: [offset: non_neg_integer(), subject: binary(), domain: nil | binary()]
+        ) ::
           {:ok, streams()} | {:error, term()}
   def list(conn, params \\ []) do
     domain = Keyword.get(params, :domain)
+
     payload =
       Jason.encode!(%{
         offset: Keyword.get(params, :offset, 0),
@@ -404,7 +419,12 @@ defmodule Jetstream.API.Stream do
   @doc """
   Get a message from the stream either by "stream sequence number" or the "last message for a given subject"
   """
-  @spec get_message(conn :: Gnat.t(), stream_name :: binary(),  method :: message_access_method(), domain :: nil | binary()) ::
+  @spec get_message(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          method :: message_access_method(),
+          domain :: nil | binary()
+        ) ::
           {:ok, message_response()} | {:error, response_error()}
   def get_message(conn, stream_name, method, domain \\ nil) when is_map(method) do
     with :ok <- validate_message_access_method(method),

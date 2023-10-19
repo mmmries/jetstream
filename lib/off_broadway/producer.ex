@@ -165,7 +165,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
           :connection_retry_timeout,
           :connection_retries,
           :inbox_prefix,
-          :domain,
+          :domain
         ])
         |> ConnectionOptions.validate!()
 
@@ -208,7 +208,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
               %ConnectionOptions{
                 connection_name: connection_name,
                 connection_retries: retries,
-                connection_retry_timeout: retry_timeout,
+                connection_retry_timeout: retry_timeout
               } = conn_options,
             listening_topic: listening_topic,
             connection_retries_left: retries_left

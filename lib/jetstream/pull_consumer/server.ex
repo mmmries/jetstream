@@ -52,7 +52,7 @@ defmodule Jetstream.PullConsumer.Server do
             connection_name: connection_name,
             connection_retry_timeout: connection_retry_timeout,
             connection_retries: connection_retries,
-            domain: domain,
+            domain: domain
           },
           listening_topic: listening_topic,
           module: module

@@ -195,7 +195,8 @@ defmodule Jetstream.API.KV do
 
       iex>{:ok, %{"key1" => "value1"}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
   """
-  @spec contents(conn :: Gnat.t(), bucket_name :: binary(), domain :: nil | binary()) :: {:ok, map()} | {:error, binary()}
+  @spec contents(conn :: Gnat.t(), bucket_name :: binary(), domain :: nil | binary()) ::
+          {:ok, map()} | {:error, binary()}
   def contents(conn, bucket_name, domain \\ nil) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()

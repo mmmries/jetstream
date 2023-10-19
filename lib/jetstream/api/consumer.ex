@@ -229,7 +229,8 @@ defmodule Jetstream.API.Consumer do
   """
   @spec create(conn :: Gnat.t(), consumer :: t()) :: {:ok, info()} | {:error, term()}
   def create(conn, %__MODULE__{durable_name: name} = consumer) when not is_nil(name) do
-    create_topic = "#{js_api(consumer.domain)}.CONSUMER.DURABLE.CREATE.#{consumer.stream_name}.#{name}"
+    create_topic =
+      "#{js_api(consumer.domain)}.CONSUMER.DURABLE.CREATE.#{consumer.stream_name}.#{name}"
 
     with :ok <- validate_durable(consumer),
          {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
@@ -259,7 +260,12 @@ defmodule Jetstream.API.Consumer do
       iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.delete(:gnat, "wrong_stream", "consumer")
 
   """
-  @spec delete(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary(), domain :: nil | binary()) ::
+  @spec delete(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          consumer_name :: binary(),
+          domain :: nil | binary()
+        ) ::
           :ok | {:error, any()}
   def delete(conn, stream_name, consumer_name, domain \\ nil) do
     topic = "#{js_api(domain)}.CONSUMER.DELETE.#{stream_name}.#{consumer_name}"
@@ -281,7 +287,12 @@ defmodule Jetstream.API.Consumer do
       iex>  {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.info(:gnat, "wrong_stream", "consumer")
 
   """
-  @spec info(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary(), domain :: nil | binary()) ::
+  @spec info(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          consumer_name :: binary(),
+          domain :: nil | binary()
+        ) ::
           {:ok, info()} | {:error, any()}
   def info(conn, stream_name, consumer_name, domain \\ nil) do
     topic = "#{js_api(domain)}.CONSUMER.INFO.#{stream_name}.#{consumer_name}"
@@ -302,10 +313,15 @@ defmodule Jetstream.API.Consumer do
       iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.list(:gnat, "wrong_stream")
 
   """
-  @spec list(conn :: Gnat.t(), stream_name :: binary(), params :: [offset: non_neg_integer(), domain: nil | binary()]) ::
+  @spec list(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          params :: [offset: non_neg_integer(), domain: nil | binary()]
+        ) ::
           {:ok, consumers()} | {:error, term()}
   def list(conn, stream_name, params \\ []) do
     domain = Keyword.get(params, :domain)
+
     payload =
       Jason.encode!(%{
         offset: Keyword.get(params, :offset, 0)

@@ -228,7 +228,9 @@ defmodule Jetstream.API.ConsumerTest do
       consumer_name: consumer_name,
       reply_subject: reply_subject
     } do
-      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject, nil, batch: 10)
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject, nil,
+        batch: 10
+      )
 
       Gnat.pub(:gnat, subject, "message 1")
 
