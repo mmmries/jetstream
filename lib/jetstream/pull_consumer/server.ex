@@ -51,7 +51,8 @@ defmodule Jetstream.PullConsumer.Server do
             consumer_name: consumer_name,
             connection_name: connection_name,
             connection_retry_timeout: connection_retry_timeout,
-            connection_retries: connection_retries
+            connection_retries: connection_retries,
+            domain: domain
           },
           listening_topic: listening_topic,
           module: module
@@ -66,10 +67,10 @@ defmodule Jetstream.PullConsumer.Server do
 
     with {:ok, conn} <- connection_pid(connection_name),
          Process.link(conn),
-         :ok <- check_consumer_exists(connection_name, stream_name, consumer_name),
+         :ok <- check_consumer_exists(connection_name, stream_name, consumer_name, domain),
          {:ok, sid} <- Gnat.sub(conn, self(), listening_topic),
          gen_state = %{gen_state | subscription_id: sid},
-         :ok <- next_message(conn, stream_name, consumer_name, listening_topic),
+         :ok <- next_message(conn, stream_name, consumer_name, domain, listening_topic),
          gen_state = %{gen_state | current_retry: 0} do
       {:ok, gen_state}
     else
@@ -140,8 +141,8 @@ defmodule Jetstream.PullConsumer.Server do
     end
   end
 
-  defp check_consumer_exists(gnat, stream_name, consumer_name) do
-    case Jetstream.API.Consumer.info(gnat, stream_name, consumer_name) do
+  defp check_consumer_exists(gnat, stream_name, consumer_name, domain) do
+    case Jetstream.API.Consumer.info(gnat, stream_name, consumer_name, domain) do
       {:ok, _consumer} ->
         :ok
 
@@ -171,7 +172,8 @@ defmodule Jetstream.PullConsumer.Server do
           connection_options: %ConnectionOptions{
             stream_name: stream_name,
             consumer_name: consumer_name,
-            connection_name: connection_name
+            connection_name: connection_name,
+            domain: domain
           },
           listening_topic: listening_topic,
           subscription_id: subscription_id,
@@ -204,6 +206,7 @@ defmodule Jetstream.PullConsumer.Server do
           message.gnat,
           stream_name,
           consumer_name,
+          domain,
           listening_topic
         )
 
@@ -217,6 +220,7 @@ defmodule Jetstream.PullConsumer.Server do
           message.gnat,
           stream_name,
           consumer_name,
+          domain,
           listening_topic
         )
 
@@ -228,6 +232,7 @@ defmodule Jetstream.PullConsumer.Server do
           message.gnat,
           stream_name,
           consumer_name,
+          domain,
           listening_topic
         )
 
@@ -314,12 +319,13 @@ defmodule Jetstream.PullConsumer.Server do
     {:disconnect, {:close, from}, gen_state}
   end
 
-  defp next_message(conn, stream_name, consumer_name, listening_topic) do
+  defp next_message(conn, stream_name, consumer_name, domain, listening_topic) do
     Jetstream.API.Consumer.request_next_message(
       conn,
       stream_name,
       consumer_name,
-      listening_topic
+      listening_topic,
+      domain
     )
   end
 end

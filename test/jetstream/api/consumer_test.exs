@@ -228,7 +228,9 @@ defmodule Jetstream.API.ConsumerTest do
       consumer_name: consumer_name,
       reply_subject: reply_subject
     } do
-      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject, batch: 10)
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject, nil,
+        batch: 10
+      )
 
       Gnat.pub(:gnat, subject, "message 1")
 
@@ -253,7 +255,7 @@ defmodule Jetstream.API.ConsumerTest do
       consumer_name: consumer_name,
       reply_subject: reply_subject
     } do
-      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject,
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject, nil,
         no_wait: true
       )
 
@@ -275,7 +277,7 @@ defmodule Jetstream.API.ConsumerTest do
         assert {:ok, _} = Gnat.request(:gnat, subject, "message #{i}")
       end
 
-      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject,
+      Consumer.request_next_message(:gnat, stream_name, consumer_name, reply_subject, nil,
         batch: 10,
         no_wait: true
       )

@@ -17,6 +17,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
 
     * `consumer_name` - The name of consumer.
 
+
     Optional options:
 
     * `connection_retry_timeout` - time in milliseconds, after which the failing
@@ -26,6 +27,8 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
       make before shutting down. Defaults to `10`.
 
     * `inbox_prefix` - custom prefix for listening topic. Defaults to `_INBOX.`.
+
+    * `domain` - Jetstream domain.
 
     ### Message pulling options
 
@@ -161,7 +164,8 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
           :consumer_name,
           :connection_retry_timeout,
           :connection_retries,
-          :inbox_prefix
+          :inbox_prefix,
+          :domain
         ])
         |> ConnectionOptions.validate!()
 
@@ -348,6 +352,7 @@ with {:module, _} <- Code.ensure_compiled(Broadway) do
         state.connection_options.stream_name,
         state.connection_options.consumer_name,
         state.listening_topic,
+        state.connection_options.domain,
         batch: total_demand,
         no_wait: true
       )

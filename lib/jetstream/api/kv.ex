@@ -195,8 +195,9 @@ defmodule Jetstream.API.KV do
 
       iex>{:ok, %{"key1" => "value1"}} = Jetstream.API.KV.contents(:gnat, "my_bucket")
   """
-  @spec contents(conn :: Gnat.t(), bucket_name :: binary()) :: {:ok, map()} | {:error, binary()}
-  def contents(conn, bucket_name) do
+  @spec contents(conn :: Gnat.t(), bucket_name :: binary(), domain :: nil | binary()) ::
+          {:ok, map()} | {:error, binary()}
+  def contents(conn, bucket_name, domain \\ nil) do
     stream = stream_name(bucket_name)
     inbox = Util.reply_inbox()
     consumer_name = "all_key_values_consumer_#{Util.nuid()}"
@@ -207,6 +208,7 @@ defmodule Jetstream.API.KV do
              durable_name: consumer_name,
              deliver_subject: inbox,
              stream_name: stream,
+             domain: domain,
              ack_policy: :none,
              max_ack_pending: -1,
              max_deliver: 1
@@ -214,7 +216,7 @@ defmodule Jetstream.API.KV do
       keys = receive_keys(bucket_name)
 
       :ok = Gnat.unsub(conn, sub)
-      :ok = Consumer.delete(conn, stream, consumer_name)
+      :ok = Consumer.delete(conn, stream, consumer_name, domain)
 
       {:ok, keys}
     end

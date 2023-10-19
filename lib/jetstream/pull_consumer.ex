@@ -71,6 +71,7 @@ defmodule Jetstream.PullConsumer do
     connection. When this value is exceeded, the pull consumer stops with the `:timeout` reason,
     defaults to `10`
   * `:inbox_prefix` - allows the default `_INBOX.` prefix to be customized. Should end with a dot.
+  * `:domain` - use a JetStream domain, this is mostly used on leaf nodes.
 
   ## Dynamic Connection Options
 
@@ -203,6 +204,7 @@ defmodule Jetstream.PullConsumer do
           | {:consumer_name, String.t()}
           | {:connection_retry_timeout, non_neg_integer()}
           | {:connection_retries, non_neg_integer()}
+          | {:domain, String.t()}
 
   @typedoc """
   Connection options used to connect the consumer to NATS server.

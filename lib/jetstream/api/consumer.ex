@@ -14,6 +14,7 @@ defmodule Jetstream.API.Consumer do
   Consumer struct fields explanation:
 
   * `:stream_name` - name of a stream the consumer is pointing at.
+  * `:domain` - JetStream domain the stream is on.
   * `:ack_policy` - how the messages should be acknowledged. It has the following options:
       - `:explicit` - the default policy. It means that each individual message must be acknowledged.
         It is the only allowed option for pull consumers.
@@ -92,6 +93,7 @@ defmodule Jetstream.API.Consumer do
     :deliver_group,
     :deliver_subject,
     :description,
+    :domain,
     :durable_name,
     :filter_subject,
     :flow_control,
@@ -116,6 +118,7 @@ defmodule Jetstream.API.Consumer do
 
   @type t :: %__MODULE__{
           stream_name: binary(),
+          domain: nil | binary(),
           ack_policy: :none | :all | :explicit,
           ack_wait: nil | non_neg_integer(),
           backoff: nil | [non_neg_integer()],
@@ -226,7 +229,8 @@ defmodule Jetstream.API.Consumer do
   """
   @spec create(conn :: Gnat.t(), consumer :: t()) :: {:ok, info()} | {:error, term()}
   def create(conn, %__MODULE__{durable_name: name} = consumer) when not is_nil(name) do
-    create_topic = "$JS.API.CONSUMER.DURABLE.CREATE.#{consumer.stream_name}.#{name}"
+    create_topic =
+      "#{js_api(consumer.domain)}.CONSUMER.DURABLE.CREATE.#{consumer.stream_name}.#{name}"
 
     with :ok <- validate_durable(consumer),
          {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
@@ -235,7 +239,7 @@ defmodule Jetstream.API.Consumer do
   end
 
   def create(conn, %__MODULE__{} = consumer) do
-    create_topic = "$JS.API.CONSUMER.CREATE.#{consumer.stream_name}"
+    create_topic = "#{js_api(consumer.domain)}.CONSUMER.CREATE.#{consumer.stream_name}"
 
     with :ok <- validate(consumer),
          {:ok, raw_response} <- request(conn, create_topic, create_payload(consumer)) do
@@ -256,10 +260,15 @@ defmodule Jetstream.API.Consumer do
       iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.delete(:gnat, "wrong_stream", "consumer")
 
   """
-  @spec delete(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary()) ::
+  @spec delete(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          consumer_name :: binary(),
+          domain :: nil | binary()
+        ) ::
           :ok | {:error, any()}
-  def delete(conn, stream_name, consumer_name) do
-    topic = "$JS.API.CONSUMER.DELETE.#{stream_name}.#{consumer_name}"
+  def delete(conn, stream_name, consumer_name, domain \\ nil) do
+    topic = "#{js_api(domain)}.CONSUMER.DELETE.#{stream_name}.#{consumer_name}"
 
     with {:ok, _response} <- request(conn, topic, "") do
       :ok
@@ -278,10 +287,15 @@ defmodule Jetstream.API.Consumer do
       iex>  {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.info(:gnat, "wrong_stream", "consumer")
 
   """
-  @spec info(conn :: Gnat.t(), stream_name :: binary(), consumer_name :: binary()) ::
+  @spec info(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          consumer_name :: binary(),
+          domain :: nil | binary()
+        ) ::
           {:ok, info()} | {:error, any()}
-  def info(conn, stream_name, consumer_name) do
-    topic = "$JS.API.CONSUMER.INFO.#{stream_name}.#{consumer_name}"
+  def info(conn, stream_name, consumer_name, domain \\ nil) do
+    topic = "#{js_api(domain)}.CONSUMER.INFO.#{stream_name}.#{consumer_name}"
 
     with {:ok, raw} <- request(conn, topic, "") do
       {:ok, to_info(raw)}
@@ -299,15 +313,21 @@ defmodule Jetstream.API.Consumer do
       iex> {:error, %{"code" => 404, "description" => "stream not found"}} = Jetstream.API.Consumer.list(:gnat, "wrong_stream")
 
   """
-  @spec list(conn :: Gnat.t(), stream_name :: binary(), params :: [offset: non_neg_integer()]) ::
+  @spec list(
+          conn :: Gnat.t(),
+          stream_name :: binary(),
+          params :: [offset: non_neg_integer(), domain: nil | binary()]
+        ) ::
           {:ok, consumers()} | {:error, term()}
   def list(conn, stream_name, params \\ []) do
+    domain = Keyword.get(params, :domain)
+
     payload =
       Jason.encode!(%{
         offset: Keyword.get(params, :offset, 0)
       })
 
-    with {:ok, raw} <- request(conn, "$JS.API.CONSUMER.NAMES.#{stream_name}", payload) do
+    with {:ok, raw} <- request(conn, "#{js_api(domain)}.CONSUMER.NAMES.#{stream_name}", payload) do
       response = %{
         consumers: Map.get(raw, "consumers"),
         limit: Map.get(raw, "limit"),
@@ -351,6 +371,7 @@ defmodule Jetstream.API.Consumer do
           stream_name :: binary(),
           consumer_name :: binary(),
           reply_to :: String.t(),
+          domain :: nil | binary(),
           opts :: keyword()
         ) :: :ok
   def request_next_message(
@@ -358,6 +379,7 @@ defmodule Jetstream.API.Consumer do
         stream_name,
         consumer_name,
         reply_to,
+        domain \\ nil,
         opts \\ []
       ) do
     default_payload = %{batch: 1}
@@ -379,11 +401,16 @@ defmodule Jetstream.API.Consumer do
 
     Gnat.pub(
       conn,
-      "$JS.API.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
+      "#{js_api(domain)}.CONSUMER.MSG.NEXT.#{stream_name}.#{consumer_name}",
       payload,
       reply_to: reply_to
     )
   end
+
+  # https://docs.nats.io/running-a-nats-service/configuration/leafnodes/jetstream_leafnodes
+  defp js_api(nil), do: "$JS.API"
+  defp js_api(""), do: "$JS.API"
+  defp js_api(domain), do: "$JS.#{domain}.API"
 
   defp create_payload(%__MODULE__{} = cons) do
     %{
