@@ -1,7 +1,7 @@
 defmodule Jetstream.MixProject do
   use Mix.Project
 
-  @version "0.0.8"
+  @version "0.0.9"
   @github "https://github.com/mmmries/jetstream"
 
   def project do

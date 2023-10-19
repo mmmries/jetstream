@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.9
+
+* Added support for Jetstream domains https://github.com/mmmries/jetstream/pull/86
+
 ## 0.0.8
 
 * Added the `Jetstream.API.Object` module for interacting with the ObjectStore pattern https://github.com/mmmries/jetstream/pull/78
